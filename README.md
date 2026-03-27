@@ -10,7 +10,7 @@ Local Host:
 
 4. If you downloaded all of the files individually, place them in one folder and add a resources folder
 
-5. Open the folder or the cloned repositry with all of the files in your chosen IDE
+5. Open the folder or the cloned repository with all of the files in your chosen IDE
 
 6. pip install nice gui
 
