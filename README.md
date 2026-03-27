@@ -4,16 +4,18 @@
 
 Local Host:
 
-1. download all the files
+1. Install python
 
-2. ip install python
+3. Download all of the files or clone the repository
 
-3. pip install nice gui
+4. If you downloaded all of the files individually, place them in one folder and add a resources folder
 
-4. set up a directory with the 3 provided py files and a folder named resources
+5. Open the folder or the cloned repositry with all of the files in your chosen IDE
 
-5. run backend.py and connect
+6. pip install nice gui
+
+8. Run backend.py and connect
 
 Connect to remote host:
 
-1. go to notes.hikori.net:2626 or whatever you're hosting on
+1. Go to notes.hikori.net:2626 or whatever you're hosting on
