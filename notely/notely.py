@@ -1,9 +1,13 @@
 import rich_click as click
+
 from nicegui import app, ui
-from . import editor_ui
-from .file_manager import FileManager
+from pathlib import Path
 from uuid import uuid4
 
+from . import editor_ui
+from .file_manager import FileManager, file_manager, defaults
+
+file_manager: FileManager
 
 @click.group()
 def main(): ...
@@ -14,22 +18,17 @@ def server(): ...
 
 
 @server.command()
-@click.argument(
-    "directory", required=False, default="resources", type=click.Path(exists=True)
-)
+@click.argument("directory", required=False)
 @click.option("-p", "--port", type=int, default=2626)
-@click.option("-d", "--default-name", type=str, default="untitled")
+@click.option("-d", "--default-name", type=str, default=defaults.name)
 def start(directory, port, default_name):
+    file_manager.directory = directory
+    file_manager.default_name = default_name
+
     print("Server is starting up! Backend logic initialized.")
     ui.run(
         title="Notely", port=port, show=False, storage_secret=str(uuid4()), reload=False
     )
-
-    # Adapted From: https://github.com/zauberzeug/nicegui/discussions/2324#discussioncomment-8066258
-    app.storage.user.update(
-        file_manager=FileManager(directory=directory, default_name=default_name)
-    )
-
 
 @server.command()
 def stop():
