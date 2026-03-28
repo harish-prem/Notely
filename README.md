@@ -1,19 +1,32 @@
 # Notely
 
-## Setup 
+To use and help develop this program, install [`uv`](https://docs.astral.sh/uv/getting-started/installation/#installation-methods).
 
-Local Host:
+## Usage
+### Run directly from GitHub
 
-1. download all the files
+Run following command in your terminal:
 
-2. ip install python
+```
+uvx https://github.com/harish-prem/Notely/releases/download/test/notely-0.1.0-py3-none-any.whl server start
+```
 
-3. pip install nice gui
+Once the server is up and running, go to http://localhost:2626.
 
-4. set up a directory with the 3 provided py files and a folder named resources
+### Run after cloning
 
-5. run backend.py and connect
+Clone this repository and run the following command inside the repo:
 
-Connect to remote host:
+```
+uv run notely server start
+```
 
-1. go to notes.hikori.net:2626 or whatever you're hosting on
+## Development
+
+Clone this repository and run the following commands inside the repo:
+
+```
+uv venv
+./.venv/Scripts/activate
+uv sync --all-groups
+```
