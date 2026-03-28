@@ -1,19 +1,36 @@
-from pathlib import Path
+import re
+
+from collections import namedtuple
 from datetime import datetime
 from markdownify import markdownify as md
 from markdown_it import MarkdownIt
-import re
+from pathlib import Path
 
 mdit = MarkdownIt()
 
+Defaults = namedtuple("Defaults", "directory,name")
+defaults = Defaults(Path.home() / "Documents" / "Notely", "untitled")
 
 class FileManager:
+    @property
+    def directory(self):
+        return self._directory
+
+    @directory.setter
+    def directory(self, value):
+        if value:
+            self._directory = (
+                value if isinstance(value, Path) else Path(value).resolve()
+            )
+        else:
+            self._directory = defaults.directory
+        self._directory.mkdir(exist_ok=True)
+
     def __init__(
-        self, directory: str | Path = "resources", default_name: str = "untitled"
+        self, directory: str | Path | None = defaults.directory, default_name: str = defaults.name
     ):
-        self.directory: str | Path = (
-            directory if isinstance(directory, Path) else Path(directory)
-        )
+        self.directory: str | Path = directory
+
         self.default_name: str = default_name
         self.ext = ".md"
 
@@ -154,3 +171,5 @@ class FileManager:
     def get_system_mtime(self, name):
         file = self.directory / (name + self.ext)
         return file.stat().st_mtime if file.exists() else 0
+
+file_manager: FileManager = FileManager()

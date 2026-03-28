@@ -1,16 +1,16 @@
 # editor_ui.py
 
-from nicegui import app, ui
 import re
-from .file_manager import FileManager
 
+from nicegui import ui
+
+from .file_manager import FileManager, file_manager
+
+file_manager: FileManager
 
 # Landing Screen
 @ui.page("/")
 def landing_page():
-
-    # Adapted From: https://github.com/zauberzeug/nicegui/discussions/2324#discussioncomment-8066258
-    file_manager: FileManager = app.storage.user["file_manager"]
 
     def handle_create():
         file_manager.create_file()
@@ -22,7 +22,7 @@ def landing_page():
     with ui.column().classes("w-full min-h-screen items-center py-12 bg-gray-100"):
         ui.label("Select a Document").classes("text-3xl font-bold text-gray-800 mb-6")
 
-        available_files = file_manager.get_files()
+        available_files = file_manager.files
 
         # Added 'px-4' here so the cards don't scrape the absolute edge of a small browser window
         with ui.column().classes("gap-3 w-full max-w-3xl px-4"):
@@ -55,9 +55,6 @@ def landing_page():
 
 @ui.page("/editor/{filename}")
 def render_editor(filename: str):
-
-    # Adapted From: https://github.com/zauberzeug/nicegui/discussions/2324#discussioncomment-8066258
-    file_manager: FileManager = app.storage.user["file_manager"]
 
     # 1. STATE
     doc_state = file_manager.read_file(filename)
