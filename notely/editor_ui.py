@@ -8,6 +8,7 @@ from .file_manager import FileManager, file_manager
 
 file_manager: FileManager
 
+
 # Landing Screen
 @ui.page("/")
 def landing_page():
@@ -58,8 +59,6 @@ def render_editor(filename: str):
 
     # 1. STATE
     doc_state = file_manager.read_file(filename)
-    doc_state["data"][1] = file_manager.get_system_mtime(filename)
-    last_sync_mtime = file_manager.get_system_mtime(filename)
 
     # 2. LOGIC
 
@@ -69,7 +68,6 @@ def render_editor(filename: str):
         ui.navigate.to("/")
 
     def save():
-        nonlocal last_sync_mtime
         autosave_timer.deactivate()
 
         # 1. Get raw content from the UI
@@ -109,8 +107,6 @@ def render_editor(filename: str):
             ui.navigate.history.replace(f"/editor/{actual_name}")
             doc_state["oldTitle"] = actual_name
             doc_state["title"] = actual_name
-
-        last_sync_mtime = file_manager.get_system_mtime(actual_name)
 
     autosave_timer = ui.timer(2.0, lambda: save(), once=True)
     autosave_timer.deactivate()

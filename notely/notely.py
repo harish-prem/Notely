@@ -9,6 +9,7 @@ from .file_manager import FileManager, file_manager, defaults
 
 file_manager: FileManager
 
+
 @click.group()
 def main(): ...
 
@@ -29,6 +30,7 @@ def start(directory, port, default_name):
     ui.run(
         title="Notely", port=port, show=False, storage_secret=str(uuid4()), reload=False
     )
+
 
 @server.command()
 def stop():
