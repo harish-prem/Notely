@@ -56,6 +56,7 @@ def landing_page():
 
 @ui.page("/editor/{filename}")
 def render_editor(filename: str):
+    file = file_manager.get_file(filename)
 
     # 1. STATE
     doc_state = file_manager.read_file(filename)
@@ -68,6 +69,7 @@ def render_editor(filename: str):
         ui.navigate.to("/")
 
     def save():
+        nonlocal file
         autosave_timer.deactivate()
 
         # 1. Get raw content from the UI
@@ -94,7 +96,7 @@ def render_editor(filename: str):
         doc_state["title"] = re.sub(r'[<>:"/\\|?*]', "", doc_state["title"])
 
         # 4. Save to disk
-        actual_name = file_manager.save_file(doc_state)
+        actual_name = file_manager.save_file(file, doc_state)
 
         # 5. ONLY update the UI if we actually changed the string.
         # If the user just hit 'Enter', the browser's <div><br></div> is fine,
@@ -103,10 +105,9 @@ def render_editor(filename: str):
             text_editor.set_value(sanitized)
 
         # 6. Handle renaming
-        if actual_name != doc_state["oldTitle"]:
+        if actual_name != file.stem:
+            file = file_manager.get_file(actual_name)
             ui.navigate.history.replace(f"/editor/{actual_name}")
-            doc_state["oldTitle"] = actual_name
-            doc_state["title"] = actual_name
 
     autosave_timer = ui.timer(2.0, lambda: save(), once=True)
     autosave_timer.deactivate()
