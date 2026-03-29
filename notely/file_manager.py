@@ -2,6 +2,7 @@ import re
 
 from collections import namedtuple
 from datetime import datetime
+from functools import cache
 from markdownify import markdownify as md
 from markdown_it import MarkdownIt
 from pathlib import Path
@@ -11,9 +12,10 @@ mdit = MarkdownIt()
 Defaults = namedtuple("Defaults", "directory,name")
 defaults = Defaults(Path.home() / "Documents" / "Notely", "untitled")
 
+
 class FileManager:
     @property
-    def directory(self):
+    def directory(self) -> Path:
         return self._directory
 
     @directory.setter
@@ -27,9 +29,11 @@ class FileManager:
         self._directory.mkdir(exist_ok=True)
 
     def __init__(
-        self, directory: str | Path | None = defaults.directory, default_name: str = defaults.name
+        self,
+        directory: str | Path | None = defaults.directory,
+        default_name: str = defaults.name,
     ):
-        self.directory: str | Path = directory
+        self.directory: Path = directory
 
         self.default_name: str = default_name
         self.ext = ".md"
@@ -39,8 +43,9 @@ class FileManager:
         return [file.stem for file in self.directory.iterdir()]
 
     def get_time_ago(self, name: str):
-        doc = self.read_file(name)
-        timestamp = doc["data"][1]
+
+        timestamp = self.get_system_mtime(name)
+
         try:
             diff = datetime.now().timestamp() - float(timestamp)
             if diff < 60:
@@ -50,9 +55,23 @@ class FileManager:
             if diff < 86400:
                 return f"{int(diff // 3600)}h ago"
             return f"{int(diff // 86400)}d ago"
-        except ValueError, TypeError:
+        except (ValueError, TypeError) as e:
+            print(f"Getting time ago failed: {e}")
             return "Unknown"
 
+    def __hash__(self):
+        return hash((self.directory, self.default_name, self.ext))
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return (
+                (self.directory == other.directory)
+                and (self.default_name == other.default_name)
+                and (self.ext == other.ext)
+            )
+        return False
+
+    @cache
     def get_file(self, name: str):
         return self.directory / (name + self.ext)
 
@@ -77,12 +96,10 @@ class FileManager:
         name = self.get_name(name or self.default_name)
 
         try:
-            # Use Unix timestamp for metadata lines 1 and 2
-            now_ts = str(datetime.now().timestamp())
-
             (self.directory / (name + self.ext)).write_text(
                 # Metadata: Line 1 (Created), Line 2 (Modified)
-                f"{now_ts}\n{now_ts}\n---\n{name}\n---\n"
+                # f"{now_ts}\n{now_ts}\n---\n{name}\n---\n"
+                f"---\n{name}\n---\n"
             )
 
             return name  # Return this so the UI knows where to go
@@ -133,6 +150,7 @@ class FileManager:
 
         return fileinfo
 
+    @cache
     def sanitize_filename(self, name):
         return re.sub(r'[<>:"/\\|?*]', "", name)
 
@@ -171,5 +189,6 @@ class FileManager:
     def get_system_mtime(self, name):
         file = self.directory / (name + self.ext)
         return file.stat().st_mtime if file.exists() else 0
+
 
 file_manager: FileManager = FileManager()
