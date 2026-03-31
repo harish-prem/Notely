@@ -9,6 +9,7 @@ from .file_manager import FileManager, file_manager
 
 file_manager: FileManager
 
+
 # Landing Screen
 @ui.page("/")
 def landing_page():
@@ -56,10 +57,10 @@ def landing_page():
 
 @ui.page("/editor/{filename}")
 def render_editor(filename: str):
+    file = file_manager.get_file(filename)
 
     # 1. STATE
     doc_state = file_manager.read_file(filename)
-    doc_state["data"][1] = file_manager.get_system_mtime(filename)
     last_sync_mtime = file_manager.get_system_mtime(filename)
     last_editor_mtime = datetime.now().timestamp()
 
@@ -71,11 +72,11 @@ def render_editor(filename: str):
         ui.navigate.to("/")
 
     def save(e=None):
+        nonlocal file
         nonlocal last_sync_mtime
 
         # Only save if the editor content is newer than the file content
         if last_editor_mtime > last_sync_mtime:
-            print(0)
 
             # 1. Get raw content from the UI
             raw_content = text_editor.value
@@ -99,9 +100,8 @@ def render_editor(filename: str):
 
             # 5. Handle renaming
             if actual_name != doc_state["oldTitle"]:
-                ui.navigate.history.replace(f"/editor/{actual_name}")
-                doc_state["oldTitle"] = actual_name
-                doc_state["title"] = actual_name
+              file = file_manager.get_file(actual_name)
+              ui.navigate.history.replace(f"/editor/{actual_name}")
 
             last_sync_mtime = file_manager.get_system_mtime(actual_name)
 
