@@ -140,7 +140,7 @@ class FileManager:
                     content += line
 
             fileinfo["data"] = yaml.safe_load(data)
-            fileinfo["content"] = mdit.render(f.read())
+            fileinfo["content"] = mdit.render(content)
 
         return fileinfo
 
