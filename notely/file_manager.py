@@ -153,7 +153,18 @@ class FileManager:
         actual_name = self.rename_file(file.stem, doc["title"])
 
         # 2. Write the whole structure
-        self.get_file(actual_name).write_text(md(doc["content"]))
+        split_doc = doc["content"].split("<br>")
+        split_length = len(split_doc)
+        with self.get_file(actual_name).open("w") as f:
+            for index, line in enumerate(split_doc):
+                if line == "</div><div>":
+                    f.write("\n")
+                elif line:
+                    if index:
+                        f.write("\n")
+                    f.write("\n".join(filter(None, md(line).split("\n"))))
+                    if (index + 1) == split_length:
+                        f.write("\n")
 
         return actual_name
 
