@@ -2,6 +2,7 @@
 
 import re
 
+from datetime import datetime
 from nicegui import ui
 
 from .file_manager import FileManager, file_manager
@@ -60,6 +61,8 @@ def render_editor(filename: str):
 
     # 1. STATE
     doc_state = file_manager.read_file(filename)
+    last_sync_mtime = file_manager.get_system_mtime(filename)
+    last_editor_mtime = datetime.now().timestamp()
 
     # 2. LOGIC
 
@@ -68,55 +71,47 @@ def render_editor(filename: str):
         ui.navigate.history.replace(f"/")
         ui.navigate.to("/")
 
-    def save():
+    def save(e=None):
         nonlocal file
-        autosave_timer.deactivate()
+        nonlocal last_sync_mtime
 
-        # 1. Get raw content from the UI
-        raw_content = text_editor.value
-        if not raw_content:
-            raw_content = ""
+        # Only save if the editor content is newer than the file content
+        if last_editor_mtime > last_sync_mtime:
 
-        # 2. THE FIX: Smart Sanitization
-        # Instead of just appending to the end, we check if the text ALREADY
-        # has a non-breaking space near the end of the string.
+            # 1. Get raw content from the UI
+            raw_content = text_editor.value
+            if not raw_content:
+                raw_content = ""
 
-        # # This regex looks for &nbsp; followed by any number of closing tags
-        # # like </div>, </p>, or whitespace.
-        # if not re.search(r'&nbsp;\s*(<\/?[^>]+>)*\s*$', raw_content):
-        #     # If it's missing, we append it.
-        #     # But first, we remove any existing trailing &nbsp; to avoid "stacking"
-        #     sanitized = re.sub(r'&nbsp;$', '', raw_content.rstrip()) + "&nbsp;"
-        # else:
-        #     sanitized = raw_content
-        sanitized = raw_content
+            sanitized = raw_content
 
-        # 3. Update internal state
-        doc_state["content"] = sanitized
-        doc_state["title"] = re.sub(r'[<>:"/\\|?*]', "", doc_state["title"])
+            # 2. Update internal state
+            doc_state["content"] = sanitized
+            doc_state["title"] = re.sub(r'[<>:"/\\|?*]', "", doc_state["title"])
 
-        # 4. Save to disk
-        actual_name = file_manager.save_file(file, doc_state)
+            # 3. Save to disk
+            actual_name = file_manager.save_file(doc_state)
 
-        # 5. ONLY update the UI if we actually changed the string.
-        # If the user just hit 'Enter', the browser's <div><br></div> is fine,
-        # so we leave it alone.
-        if text_editor.value != sanitized:
-            text_editor.set_value(sanitized)
+            # 4. ONLY update the UI if we actually changed the string.
+            # If the user just hit 'Enter', the browser's <div><br></div> is fine,
+            # so we leave it alone.
+            if text_editor.value != sanitized:
+                text_editor.set_value(sanitized)
 
-        # 6. Handle renaming
-        if actual_name != file.stem:
-            file = file_manager.get_file(actual_name)
-            ui.navigate.history.replace(f"/editor/{actual_name}")
+            # 5. Handle renaming
+            if actual_name != doc_state["oldTitle"]:
+              file = file_manager.get_file(actual_name)
+              ui.navigate.history.replace(f"/editor/{actual_name}")
 
-    autosave_timer = ui.timer(2.0, lambda: save(), once=True)
-    autosave_timer.deactivate()
+            last_sync_mtime = file_manager.get_system_mtime(actual_name)
 
-    def reset_autosave():
-        """Restarts the 2-second countdown."""
-        autosave_timer.activate()
+    def on_editor_change(e):
+        nonlocal last_editor_mtime
+        last_editor_mtime = datetime.now().timestamp()
+        doc_state.update({"content": e.value})
 
     # 3. LAYOUT
+    autosave_timer = ui.timer(5.0, save)
 
     ui.query(".nicegui-content").classes("p-0")
     ui.add_css(".q-editor__toolbar { display: none !important; }")
@@ -137,22 +132,20 @@ def render_editor(filename: str):
             .classes("w-64")
         )
 
-        title_box.on("update:model-value", reset_autosave)
-
         # save and delete buttons
         with ui.row().classes("gap-1"):
             ui.button("Save", on_click=save, color="blue").props("flat size=sm")
             ui.button("Delete", on_click=delete, color="red").props("flat size=sm")
 
-        title_box.on("keydown.ctrl.s.capture.prevent.stop", lambda e: save())
-        title_box.on("keydown.meta.s.capture.prevent.stop", lambda e: save())
+        title_box.on("keydown.ctrl.s.capture.prevent.stop", save)
+        title_box.on("keydown.meta.s.capture.prevent.stop", save)
 
     # body
     with ui.column().classes("w-full min-h-screen items-center bg-gray-100 py-8"):
         text_editor = (
             ui.editor(
                 value=doc_state["content"],
-                on_change=lambda e: doc_state.update({"content": e.value}),
+                on_change=on_editor_change,
             )
             .props("borderless autogrow")
             .classes(
@@ -160,6 +153,7 @@ def render_editor(filename: str):
             )
         )
 
-        text_editor.on("update:model-value", reset_autosave)
-        text_editor.on("keydown.ctrl.s.capture.prevent.stop", lambda e: save())
-        text_editor.on("keydown.meta.s.capture.prevent.stop", lambda e: save())
+        print(dir(text_editor))
+
+        text_editor.on("keydown.ctrl.s.capture.prevent.stop", save)
+        text_editor.on("keydown.meta.s.capture.prevent.stop", save)
