@@ -651,6 +651,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "hypothesis" },
+    { name = "nuitka" },
     { name = "pytest" },
     { name = "pytest-custom-exit-code" },
     { name = "pytest-order" },
@@ -677,6 +678,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "hypothesis", specifier = ">=6.151.9" },
+    { name = "nuitka", specifier = ">=4.0.7" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-custom-exit-code", specifier = ">=0.3.0" },
     { name = "pytest-order", specifier = ">=1.3.0" },
@@ -688,6 +690,12 @@ dev = [
     { name = "python-lsp-server", specifier = ">=1.14.0" },
 ]
 lint = [{ name = "ruff", specifier = ">=0.15.4" }]
+
+[[package]]
+name = "nuitka"
+version = "4.0.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/0e/2537066db2458843e4a1edfc524409069ad58a456fc4b312b18b1d327431/nuitka-4.0.7.tar.gz", hash = "sha256:26543bfed6009a466ae8608bdc643add81a497e8662e4aaf157cd00aa7fd5b9f", size = 4421537, upload-time = "2026-03-24T13:26:43.368Z" }
 
 [[package]]
 name = "orjson"

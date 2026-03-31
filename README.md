@@ -30,3 +30,13 @@ uv venv
 ./.venv/Scripts/activate
 uv sync --all-groups
 ```
+
+### Building
+
+To build an executable, ensure you have one of the [supported compilers](https://github.com/Nuitka/Nuitka?tab=readme-ov-file#c-compiler):
+
+Then run the following command:
+
+```
+python -m nuitka --mode=standalone .\notely
+```

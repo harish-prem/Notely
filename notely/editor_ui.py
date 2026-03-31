@@ -90,7 +90,7 @@ def render_editor(filename: str):
             doc_state["title"] = re.sub(r'[<>:"/\\|?*]', "", doc_state["title"])
 
             # 3. Save to disk
-            actual_name = file_manager.save_file(doc_state)
+            actual_name = file_manager.save_file(file, doc_state)
 
             # 4. ONLY update the UI if we actually changed the string.
             # If the user just hit 'Enter', the browser's <div><br></div> is fine,
@@ -99,7 +99,7 @@ def render_editor(filename: str):
                 text_editor.set_value(sanitized)
 
             # 5. Handle renaming
-            if actual_name != doc_state["oldTitle"]:
+            if actual_name != file.stem:
               file = file_manager.get_file(actual_name)
               ui.navigate.history.replace(f"/editor/{actual_name}")
 
@@ -152,8 +152,6 @@ def render_editor(filename: str):
                 "w-full max-w-4xl bg-white text-lg px-10 py-5 min-h-[100vh] shadow-md"
             )
         )
-
-        print(dir(text_editor))
 
         text_editor.on("keydown.ctrl.s.capture.prevent.stop", save)
         text_editor.on("keydown.meta.s.capture.prevent.stop", save)

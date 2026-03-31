@@ -18,3 +18,10 @@ wheels/
 
 # Ruff cache
 .ruff_cache
+
+# Executables
+*.build
+*.dist
+*.exe
+*.cmd
+*.onefile-build
