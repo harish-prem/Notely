@@ -4,8 +4,8 @@ from nicegui import app, ui
 from pathlib import Path
 from uuid import uuid4
 
-from . import editor_ui
-from .file_manager import FileManager, file_manager, defaults
+from notely import editor_ui
+from notely.file_manager import FileManager, file_manager, defaults
 
 file_manager: FileManager
 

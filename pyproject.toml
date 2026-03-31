@@ -12,9 +12,6 @@ dependencies = [
     "rich-click>=1.9.7",
 ]
 
-[project.scripts]
-notely = "notely.notely:main"
-
 [dependency-groups]
 dev = [
     "hypothesis>=6.151.9",
@@ -27,6 +24,7 @@ dev = [
     "pytest-repeat>=0.9.4",
     "pytest-xdist>=3.6.1",
     "python-lsp-server>=1.14.0",
+    "nuitka>=4.0.7",
 ]
 lint = [
     "ruff>=0.15.4",
