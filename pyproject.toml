@@ -25,6 +25,7 @@ dev = [
     "pytest-xdist>=3.6.1",
     "python-lsp-server>=1.14.0",
     "nuitka>=4.0.7",
+    "poethepoet>=0.42.1",
 ]
 lint = [
     "ruff>=0.15.4",
@@ -40,3 +41,24 @@ packages = [ "notely" ]
 [tool.pytest.ini_options]
 xfail_strict = true
 addopts = "--dist loadgroup -n auto --order-group-scope class -rs --strict-markers --suppress-no-test-exit-code -vvv -x"
+
+[tool.poe.tasks.format]
+help = "Run formatter"
+cmd = "ruff format ${path}"
+args = [
+  { name = "path", default = "." }
+]
+
+[tool.poe.tasks.setup]
+help = "Set up the development environment"
+cmd = "uv sync --all-groups"
+
+[tool.poe.tasks.build]
+help = "Build wheels and executables"
+shell = """
+    uv run nuitka --include-package-data=nicegui --mode=standalone .\notely
+"""
+
+[tool.poe.tasks.clean]
+help = "Clean the deelopment environment"
+cmd = "git clean -xdf"
