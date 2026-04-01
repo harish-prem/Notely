@@ -31,12 +31,23 @@ uv venv
 uv sync --all-groups
 ```
 
+The rest of the development section assumes you are in the virtual environment just initialized.
+
 ### Building
+#### Executable
 
 To build an executable, ensure you have one of the [supported compilers](https://github.com/Nuitka/Nuitka?tab=readme-ov-file#c-compiler):
 
 Then run the following command:
 
 ```
-python -m nuitka --mode=standalone .\notely
+python -m nuitka --include-package-data=nicegui --mode=standalone .\notely
+```
+
+#### Wheel
+
+To build a wheel for use with the `uvx` command in the `Run directly from GitHub` section, run the following command:
+
+```
+uv build
 ```
