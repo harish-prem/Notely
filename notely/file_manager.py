@@ -127,7 +127,6 @@ class FileManager:
             for index, line in enumerate(f):
                 clean_line = line.rstrip("\n")
                 if clean_line == "---":
-
                     # TODO: Optimize with boolean algebra.
                     if index:
                         writing_data = False
