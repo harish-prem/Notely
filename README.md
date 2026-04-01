@@ -55,3 +55,11 @@ To remove all temporary files, run the following command:
 ```
 uv run poe clean
 ```
+
+### Testing
+
+To test Notely, run the following command:
+
+```
+uv run pytest
+```
