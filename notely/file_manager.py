@@ -10,6 +10,7 @@ from fpdf import FPDF
 from ruamel.yaml import YAML
 
 from fpdf import FPDF
+import os
 
 from ruamel.yaml import YAML
 
@@ -202,10 +203,10 @@ class FileManager:
 
     def get_system_mtime(self, name):
         file = self.get_file(name)
-        return file.stat().st_mtime if file.exists() else 0
+        return os.path.getmtime(file) if file.exists() else 0
 
     def get_system_ctime(self, name):
         file = self.get_file(name)
-        return file.stat().st_birthtime if file.exists() else 0
+        return os.path.getctime(file) if file.exists() else 0
 
 file_manager: FileManager = FileManager()

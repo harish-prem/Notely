@@ -4,10 +4,9 @@ from nicegui import app, ui
 from pathlib import Path
 from uuid import uuid4
 
-from notely import editor_ui
-from notely.file_manager import FileManager, file_manager, defaults
-
-file_manager: FileManager
+import auth 
+import editor_ui 
+from file_manager import file_manager, defaults
 
 
 @click.group()
@@ -20,7 +19,7 @@ def server(): ...
 
 @server.command()
 @click.argument("directory", required=False)
-@click.option("-p", "--port", type=int, default=2626)
+@click.option("-p", "--port", type=int, default=80)
 @click.option("-d", "--default-name", type=str, default=defaults.name)
 def start(directory, port, default_name):
     file_manager.directory = directory
