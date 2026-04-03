@@ -7,6 +7,8 @@ from functools import cache
 from markdownify import markdownify as md
 from markdown_it import MarkdownIt
 from pathlib import Path
+from fpdf import FPDF, HTMLMixin
+
 
 mdit = MarkdownIt()
 
@@ -142,6 +144,24 @@ class FileManager:
             fileinfo["content"] = mdit.render(content)
 
         return fileinfo
+    
+    def export_pdf(self, name: str) -> bytes:
+        doc = self.read_file(name)
+        
+        class PDF(FPDF, HTMLMixin):
+            pass
+
+        pdf = PDF()
+        pdf.add_page()
+
+        pdf.set_font("Times", "B", 24)
+        pdf.cell(0, 12, doc["title"], ln=True)
+        pdf.ln(6)
+
+        pdf.set_font("Times", size=12)
+        pdf.write_html(doc["content"])
+
+        return pdf.output()
 
     @cache
     def sanitize_filename(self, name):
