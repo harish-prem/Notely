@@ -127,20 +127,16 @@ class FileManager:
             for index, line in enumerate(f):
                 clean_line = line.rstrip("\n")
                 if clean_line == "---":
-
-                    # TODO: Optimize with boolean algebra.
-                    if index:
-                        writing_data = False
-                    elif not writing_data:
-                        writing_data = True
-
+                    writing_data = not index
                 if writing_data:
                     data += line
+                elif clean_line:
+                    content += mdit.render(line)
                 else:
-                    content += line
+                    content += "<div><br></div>"
 
             fileinfo["data"] = yaml.safe_load(data)
-            fileinfo["content"] = mdit.render(content)
+            fileinfo["content"] = content
 
         return fileinfo
 
@@ -153,17 +149,21 @@ class FileManager:
         actual_name = self.rename_file(file.stem, doc["title"])
 
         # 2. Write the whole structure
-        split_doc = doc["content"].split("<div><br>")
+        split_doc = doc["content"].split("<br>")
         split_length = len(split_doc)
         with self.get_file(actual_name).open("w") as f:
             line: str
             for index, line in enumerate(split_doc):
-                line = line.removeprefix("</div>")
-                f.write("\n".join(filter(None, md(line).split("\n"))))
-                if (index + 1) < split_length:
+                print(line)
+                # line = line.removeprefix("</div>").removeprefix("</p>")
+                if line in ("</div><div>", "</p><p>"):
                     f.write("\n")
-                    if line:
+                else:
+                    f.write("\n".join(filter(None, md(line).split("\n"))))
+                    if (index + 1) < split_length:
                         f.write("\n")
+                        if line:
+                            f.write("\n")
 
         return actual_name
 
