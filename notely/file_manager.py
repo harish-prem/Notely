@@ -174,5 +174,9 @@ class FileManager:
         file = self.get_file(name)
         return file.stat().st_mtime if file.exists() else 0
 
+    def get_system_ctime(self, name):
+        file = self.get_file(name)
+        return file.stat().st_ctime if file.exists() else 0
+
 
 file_manager: FileManager = FileManager()
