@@ -140,7 +140,7 @@ class FileManager:
                     content += line
 
             fileinfo["data"] = yaml.safe_load(data)
-            fileinfo["content"] = mdit.render(f.read())
+            fileinfo["content"] = mdit.render(content)
 
         return fileinfo
 
@@ -153,17 +153,16 @@ class FileManager:
         actual_name = self.rename_file(file.stem, doc["title"])
 
         # 2. Write the whole structure
-        split_doc = doc["content"].split("<br>")
+        split_doc = doc["content"].split("<div><br>")
         split_length = len(split_doc)
         with self.get_file(actual_name).open("w") as f:
             line: str
             for index, line in enumerate(split_doc):
-                if line.startswith("</div><div>"):
+                line = line.removeprefix("</div>")
+                f.write("\n".join(filter(None, md(line).split("\n"))))
+                if (index + 1) < split_length:
                     f.write("\n")
-                    line.removeprefix("</div><div>")
-                if line:
-                    f.write(md(line))
-                    if not index and (split_length > 1):
+                    if line:
                         f.write("\n")
 
         return actual_name
