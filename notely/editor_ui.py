@@ -77,7 +77,6 @@ def render_editor(filename: str):
 
         # Only save if the editor content is newer than the file content
         if last_editor_mtime > last_sync_mtime:
-
             # 1. Get raw content from the UI
             raw_content = text_editor.value
             if not raw_content:
@@ -100,8 +99,8 @@ def render_editor(filename: str):
 
             # 5. Handle renaming
             if actual_name != file.stem:
-              file = file_manager.get_file(actual_name)
-              ui.navigate.history.replace(f"/editor/{actual_name}")
+                file = file_manager.get_file(actual_name)
+                ui.navigate.history.replace(f"/editor/{actual_name}")
 
             last_sync_mtime = file_manager.get_system_mtime(actual_name)
 

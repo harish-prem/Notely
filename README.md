@@ -26,17 +26,40 @@ uv run notely server start
 Clone this repository and run the following commands inside the repo:
 
 ```
-uv venv
-./.venv/Scripts/activate
-uv sync --all-groups
+uv run poe setup
 ```
 
 ### Building
+#### Executable
 
 To build an executable, ensure you have one of the [supported compilers](https://github.com/Nuitka/Nuitka?tab=readme-ov-file#c-compiler):
 
 Then run the following command:
 
 ```
-python -m nuitka --mode=standalone .\notely
+uv run poe build
+```
+
+#### Wheel
+
+To build a wheel for use with the `uvx` command in the `Run directly from GitHub` section, run the following command:
+
+```
+uv build
+```
+
+### Clean
+
+To remove all temporary files, run the following command:
+
+```
+uv run poe clean
+```
+
+### Testing
+
+To test Notely, run the following command:
+
+```
+uv run pytest
 ```
