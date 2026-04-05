@@ -19,9 +19,10 @@ wheels/
 # Ruff cache
 .ruff_cache
 
-# Executables
+# Build Files
 *.build
 *.dist
 *.exe
 *.cmd
 *.onefile-build
+nuitka-crash-report.xml

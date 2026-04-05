@@ -156,14 +156,14 @@ class FileManager:
         split_doc = doc["content"].split("<br>")
         split_length = len(split_doc)
         with self.get_file(actual_name).open("w") as f:
+            line: str
             for index, line in enumerate(split_doc):
-                if line == "</div><div>":
+                if line.startswith("</div><div>"):
                     f.write("\n")
-                elif line:
-                    if index:
-                        f.write("\n")
-                    f.write("\n".join(filter(None, md(line).split("\n"))))
-                    if (index + 1) == split_length:
+                    line.removeprefix("</div><div>")
+                if line:
+                    f.write(md(line))
+                    if not index and (split_length > 1):
                         f.write("\n")
 
         return actual_name
