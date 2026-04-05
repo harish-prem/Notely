@@ -14,26 +14,26 @@ def update_file_tags(filename, new_tags_list):
     if not filepath.exists():
         return
 
-    new_tags = [str(t).strip() for t in new_tags_list if str(t).strip()]
+    new_tags = [str(t).strip() for t in (new_tags_list or []) if str(t).strip()]
     raw_text = filepath.read_text(encoding='utf-8')
 
-    # If the file already has YAML frontmatter
-    if raw_text.startswith("---"):
-        parts = raw_text.split("---", 2)
-        if len(parts) >= 3:
-            frontmatter = yaml.safe_load(parts[1]) or {}
+    # Regex that is flexible with whitespace and newlines
+    match = re.match(r"^\s*---\s*[\r\n]*(.*?)[\r\n]*---\s*[\r\n]*(.*)", raw_text, re.DOTALL)
 
-            # Overwrite the tags list so users can add OR remove tags via the UI
-            frontmatter["tags"] = new_tags
-            new_fm = yaml.dump(frontmatter, sort_keys=False)
-            new_text = f"---\n{new_fm}---\n{parts[2].lstrip()}"
-            filepath.write_text(new_text, encoding='utf-8')
-            return
+    if match:
+        fm_text, body_text = match.groups()
+        try:
+            frontmatter = yaml.safe_load(fm_text) or {}
+        except yaml.YAMLError:
+            frontmatter = {}
+    else:
+        # If no header, we create one
+        frontmatter = {}
+        body_text = raw_text.lstrip()
 
-    # If the file has no frontmatter
-    new_fm = yaml.dump({"tags": new_tags}, sort_keys=False)
-    new_text = f"---\n{new_fm}---\n{raw_text}"
-    filepath.write_text(new_text, encoding='utf-8')
+    frontmatter["tags"] = new_tags
+    new_fm = yaml.safe_dump(frontmatter, default_flow_style=False, sort_keys=False)
+    filepath.write_text(f"---\n{new_fm}---\n{body_text}", encoding='utf-8')
 
 
 @ui.page("/")
@@ -46,26 +46,48 @@ def landing_page():
         "sort_order": "Desc"
     }
 
-
+    # tags
     tag_dialog = ui.dialog()
     with tag_dialog, ui.card().classes('w-[400px] shadow-xl rounded-lg'):
         ui.label('Manage Tags').classes('text-xl font-bold mb-1 text-gray-800')
         dialog_filename = ui.label('').classes('text-sm text-gray-500 mb-4 font-mono truncate')
 
-        # 'add-unique' allows typing a new word and pressing Enter to create a chip!
+        def handle_new_tag(e):
+            new_val = e.args[0] if isinstance(e.args, (list, tuple)) else e.args
+
+            if not new_val or not str(new_val).strip():
+                return
+
+            new_val = str(new_val).strip()
+
+            if new_val not in tag_input.options:
+                tag_input.options.append(new_val)
+
+            current_tags = list(tag_input.value or [])
+            if new_val not in current_tags:
+                current_tags.append(new_val)
+                tag_input.value = current_tags
+
+            tag_input.run_method('updateInputValue', '')
+            tag_input.update()
+
         tag_input = ui.select(
-            options=[],
+            options=["Draft", "Work", "Personal", "Todo"],
             multiple=True,
+            value=[],
             with_input=True,
-            new_value_mode='add-unique',
+            new_value_mode='add',
             label="Select or type a new tag..."
         ).props('use-chips').classes('w-full mb-6')
+
+        tag_input.on('new-value', handle_new_tag)
 
         with ui.row().classes('w-full justify-end gap-2'):
             ui.button('Cancel', on_click=tag_dialog.close).props('flat text-color=gray-500')
 
             def on_save():
-                update_file_tags(dialog_filename.text, tag_input.value)
+                clean_tags = [str(t) for t in tag_input.value if t and str(t).strip()]
+                update_file_tags(dialog_filename.text, clean_tags)
                 tag_dialog.close()
                 document_grid.refresh()
 
@@ -74,29 +96,27 @@ def landing_page():
     def open_tag_dialog(filename, current_tags):
         dialog_filename.text = filename
 
-        # Scrape all files to populate the dropdown with every known tag
-        all_t = set()
+        all_t = {"Draft", "Work", "Personal", "Todo"}
         for f in get_file_previews():
             for t in f['tags']:
                 all_t.add(t)
 
-        # Pre-fill the dropdown and the active chips
         tag_input.options = sorted(list(all_t))
-        tag_input.value = current_tags.copy()
+        tag_input.set_value(list(current_tags) if current_tags else [])
         tag_dialog.open()
 
-    # -----------------------------
+    # files
 
     def handle_create():
         if state["search_query"] == "":
             file_manager.create_file()
         else:
             file_manager.create_file(state["search_query"])
-        ui.navigate.to("/")
+        document_grid.refresh()
 
     def handle_delete(filename):
         file_manager.del_file(filename)
-        ui.navigate.to("/")
+        document_grid.refresh()
 
     def get_file_previews():
         previews = []
@@ -105,17 +125,16 @@ def landing_page():
             mtime = file_manager.get_system_mtime(filename)
             ctime = file_manager.get_system_ctime(filename)
 
-            if ctime > 0:
-                ctime_display = datetime.fromtimestamp(ctime).strftime("%b %d, %Y")
-            else:
-                ctime_display = "Unknown"
+            ctime_display = datetime.fromtimestamp(ctime).strftime("%b %d, %Y") if ctime > 0 else "Unknown"
 
             fileinfo = file_manager.read_file(filename)
 
+            # Extract tags safely
             raw_tags = fileinfo.get("data", {}).get("tags", []) if fileinfo.get("data") else []
             tags = raw_tags if isinstance(raw_tags, list) else [raw_tags]
             tags = [str(t).strip() for t in tags if t]
 
+            # Create snippet
             raw_html = fileinfo.get("content", "")
             clean_text = re.sub(r'<[^>]+>', '', raw_html).strip()
             snippet = clean_text if clean_text else "Empty document..."
@@ -129,63 +148,59 @@ def landing_page():
                 "tags": tags,
                 "snippet": snippet
             })
-
         return previews
+
+    # ui elements
 
     @ui.refreshable
     def document_grid():
         available_files = get_file_previews()
 
-        # Extract all unique tags to update the toolbar filter
+        # Sync the global tag filter options
         all_tags = set()
         for f in available_files:
             for t in f['tags']:
                 all_tags.add(t)
-
         tag_filter_dropdown.options = sorted(list(all_tags))
         tag_filter_dropdown.update()
 
-        # Filtering
+        # Filter by Search Query
         if state["search_query"]:
             query = state["search_query"].lower()
             available_files = [f for f in available_files if query in f['name'].lower()]
 
-
+        # Filter by Selected Tags
         if state["search_tags"]:
             available_files = [
                 f for f in available_files
                 if all(req_tag in f['tags'] for req_tag in state["search_tags"])
             ]
 
-        # Sorting
+        # Sort files
         is_descending = state["sort_order"] == "Desc"
-        sort_by = state["sort_by"]
-
-        if sort_by == "Name":
+        if state["sort_by"] == "Name":
             available_files.sort(key=lambda x: x['name'].lower(), reverse=is_descending)
-        elif sort_by == "Date Edited":
+        elif state["sort_by"] == "Date Edited":
             available_files.sort(key=lambda x: x['mtime'], reverse=is_descending)
-        elif sort_by == "Date Created":
+        elif state["sort_by"] == "Date Created":
             available_files.sort(key=lambda x: x['ctime'], reverse=is_descending)
 
-        # Grid Layout
+        # Render Grid
         with ui.element('div').classes(
                 "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full max-w-6xl px-4"):
 
-            # "Create New" Card
+            # New Document Button
             with ui.card().classes(
-                    "w-full h-48 flex flex-col items-center justify-center cursor-pointer "
-                    "bg-white border-2 border-dashed border-gray-300 hover:border-green-500 hover:bg-green-50 transition-all shadow-sm"
-            ).on("click", handle_create):
+                    "w-full h-48 flex flex-col items-center justify-center cursor-pointer bg-white border-2 border-dashed border-gray-300 hover:border-green-500 hover:bg-green-50 transition-all shadow-sm").on(
+                    "click", handle_create):
                 ui.icon("add_circle_outline", size="3rem").classes("text-green-600 mb-2")
                 ui.label("New Document").classes("text-lg font-bold text-gray-700")
 
-            # Document Cards
+            # File Cards
             for file_data in available_files:
                 with ui.card().classes(
-                        "w-full h-48 flex flex-col justify-between cursor-pointer "
-                        "bg-white hover:shadow-lg transition-shadow border border-gray-200 relative"
-                ).on("click", lambda e, f=file_data['name']: ui.navigate.to(f"/editor/{f}")):
+                        "w-full h-48 flex flex-col justify-between cursor-pointer bg-white hover:shadow-lg transition-shadow border border-gray-200 relative").on(
+                        "click", lambda e, f=file_data['name']: ui.navigate.to(f"/editor/{f}")):
 
                     with ui.column().classes("w-full gap-2"):
                         with ui.row().classes("w-full justify-between items-start flex-nowrap"):
@@ -194,7 +209,6 @@ def landing_page():
                             with ui.button(icon='more_vert').props('flat round dense').classes(
                                     'text-gray-400 hover:text-gray-800 -mt-1 -mr-2').on('click.stop', lambda e: None):
                                 with ui.menu():
-                                    # Pass current tags so the dialog can pre-fill the chips!
                                     ui.menu_item('Manage Tags', on_click=lambda e, f=file_data['name'],
                                                                                 t=file_data['tags']: open_tag_dialog(f,
                                                                                                                      t)).classes(
@@ -203,6 +217,7 @@ def landing_page():
                                                  on_click=lambda e, f=file_data['name']: handle_delete(f)).classes(
                                         'text-red-600 font-medium')
 
+                        # Tag Chips
                         if file_data['tags']:
                             with ui.row().classes("flex-wrap gap-1 mb-1"):
                                 for tag in file_data['tags'][:3]:
@@ -219,22 +234,18 @@ def landing_page():
                         ui.label(f"Created {file_data['ctime_display']} • Edited {file_data['time_ago']}").classes(
                             "text-xs font-medium text-gray-400 truncate")
 
-    # -- Main Layout Build --
+    # layout
     ui.query(".nicegui-content").classes("p-0")
 
     with ui.column().classes("w-full min-h-screen items-center py-12 bg-gray-50"):
-
         with ui.row().classes("w-full max-w-6xl px-4 items-center justify-between mb-4"):
             ui.label("My Documents").classes("text-4xl font-extrabold text-gray-800 tracking-tight")
 
         with ui.row().classes("w-full max-w-6xl px-4 mb-8 justify-between items-center gap-4 flex-wrap sm:flex-nowrap"):
             with ui.row().classes("flex-grow flex-nowrap items-center gap-2"):
-                ui.input(
-                    placeholder="Search documents...",
-                    on_change=document_grid.refresh
-                ).bind_value(state, "search_query").props('outlined dense clearable').classes(
-                    "flex-grow min-w-[200px] bg-white")
-
+                ui.input(placeholder="Search documents...", on_change=document_grid.refresh).bind_value(state,
+                                                                                                        "search_query").props(
+                    'outlined dense clearable').classes("flex-grow min-w-[200px] bg-white")
 
                 global tag_filter_dropdown
                 tag_filter_dropdown = ui.select(
@@ -246,21 +257,16 @@ def landing_page():
                 ).bind_value(state, "search_tags").props('use-chips dense clearable').classes("w-56 bg-white")
 
             with ui.row().classes("items-center gap-2 w-full sm:w-auto flex-nowrap"):
-                sort_criteria = ["Date Edited", "Date Created", "Name"]
-                ui.select(
-                    options=sort_criteria,
-                    on_change=document_grid.refresh
-                ).bind_value(state, "sort_by").props('outlined dense').classes("w-40 bg-white")
+                ui.select(options=["Date Edited", "Date Created", "Name"], on_change=document_grid.refresh).bind_value(
+                    state, "sort_by").props('outlined dense').classes("w-40 bg-white")
 
                 def toggle_order(e):
                     state["sort_order"] = "Asc" if state["sort_order"] == "Desc" else "Desc"
                     e.sender.icon = 'arrow_upward' if state["sort_order"] == "Asc" else 'arrow_downward'
                     document_grid.refresh()
 
-                ui.button(
-                    icon='arrow_downward',
-                    on_click=toggle_order
-                ).props('outline color=grey-5 text-color=grey-9').classes("bg-white h-[40px] px-3 shadow-none")
+                ui.button(icon='arrow_downward', on_click=toggle_order).props(
+                    'outline color=grey-5 text-color=grey-9').classes("bg-white h-[40px] px-3 shadow-none")
 
         document_grid()
 
