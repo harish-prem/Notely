@@ -154,8 +154,6 @@ class FileManager:
         with self.get_file(actual_name).open("w") as f:
             line: str
             for index, line in enumerate(split_doc):
-                print(line)
-                # line = line.removeprefix("</div>").removeprefix("</p>")
                 if line in ("</div><div>", "</p><p>"):
                     f.write("\n")
                 else:
