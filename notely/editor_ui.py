@@ -1,39 +1,11 @@
 # editor_ui.py
 
 import re
-import yaml
 from datetime import datetime
 from nicegui import ui
 from .file_manager import FileManager, file_manager
 
 file_manager: FileManager
-
-
-def update_file_tags(filename, new_tags_list):
-    filepath = file_manager.get_file(filename)
-    if not filepath.exists():
-        return
-
-    new_tags = [str(t).strip() for t in (new_tags_list or []) if str(t).strip()]
-    raw_text = filepath.read_text(encoding='utf-8')
-
-    # Regex that is flexible with whitespace and newlines
-    match = re.match(r"^\s*---\s*[\r\n]*(.*?)[\r\n]*---\s*[\r\n]*(.*)", raw_text, re.DOTALL)
-
-    if match:
-        fm_text, body_text = match.groups()
-        try:
-            frontmatter = yaml.safe_load(fm_text) or {}
-        except yaml.YAMLError:
-            frontmatter = {}
-    else:
-        # If no header, we create one
-        frontmatter = {}
-        body_text = raw_text.lstrip()
-
-    frontmatter["tags"] = new_tags
-    new_fm = yaml.safe_dump(frontmatter, default_flow_style=False, sort_keys=False)
-    filepath.write_text(f"---\n{new_fm}---\n{body_text}", encoding='utf-8')
 
 
 @ui.page("/")
@@ -86,8 +58,9 @@ def landing_page():
             ui.button('Cancel', on_click=tag_dialog.close).props('flat text-color=gray-500')
 
             def on_save():
-                clean_tags = [str(t) for t in tag_input.value if t and str(t).strip()]
-                update_file_tags(dialog_filename.text, clean_tags)
+                doc_state = file_manager.read_file(dialog_filename.text)
+                doc_state["data"]["tags"] = [str(t) for t in tag_input.value if t and str(t).strip()]
+                file_manager.save_file(file_manager.get_file(dialog_filename.text), doc_state)
                 tag_dialog.close()
                 document_grid.refresh()
 

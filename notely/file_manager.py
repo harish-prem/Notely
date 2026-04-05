@@ -1,5 +1,4 @@
 import re
-import yaml
 
 from collections import namedtuple
 from datetime import datetime
@@ -7,8 +6,16 @@ from functools import cache
 from markdownify import markdownify as md
 from markdown_it import MarkdownIt
 from pathlib import Path
+from ruamel.yaml import YAML
 
 mdit = MarkdownIt()
+yaml = YAML(typ="safe", pure=True)
+yaml.default_flow_style = False
+
+# Adapted From:
+# Answer: https://stackoverflow.com/a/63532326
+# User: https://stackoverflow.com/users/11386706/kerasbaz
+yaml.indent(sequence=4, offset=2)
 
 Defaults = namedtuple("Defaults", "directory,name")
 defaults = Defaults(Path.home() / "Documents" / "Notely", "untitled")
@@ -95,11 +102,7 @@ class FileManager:
 
     def create_file(self, name=None):
         name = self.get_name(name or self.default_name)
-        filepath = self.get_file(name)
-
-        if not filepath.exists():
-            filepath.write_text("---\ntags: []\n---\n\n", encoding='utf-8')
-
+        self.get_file(name).touch()
         return name
 
     def rename_file(self, old_name, new_name):
@@ -117,8 +120,6 @@ class FileManager:
             print(f"Rename failed: {e}")
             return old_name
 
-    # file_manager.py
-
     def read_file(self, name):
         fileinfo = {"data": {}, "title": name, "content": ""}
         file = self.get_file(name)
@@ -126,32 +127,25 @@ class FileManager:
             return fileinfo
 
         writing_data = False
-        data_lines = []
-        content_lines = []
+        data = ""
+        content = ""
 
-        with file.open("r", encoding='utf-8') as f:
-            lines = f.readlines()
+        with file.open("r") as f:
+            for index, line in enumerate(f):
+                clean_line = line.rstrip("\n")
+                if clean_line == "---":
+                    writing_data = not index
+                    continue
+                if writing_data:
+                    data += line
+                elif clean_line:
+                    content += mdit.render(line)
+                else:
+                    content += "<div><br></div>"
 
-        # Standard Markdown Frontmatter parsing
-        if lines and lines[0].strip() == "---":
-            writing_data = True
-            for i, line in enumerate(lines[1:]):  # Start after the first ---
-                if line.strip() == "---":
-                    writing_data = False
-                    # Everything after the second --- is content
-                    content_lines = lines[i + 2:]
-                    break
-                data_lines.append(line)
-        else:
-            content_lines = lines
+            fileinfo["data"] = yaml.load(data) or {}
+            fileinfo["content"] = content
 
-        try:
-            # data_lines now ONLY contains "tags: []", no "---"
-            fileinfo["data"] = yaml.safe_load("".join(data_lines)) or {}
-        except yaml.YAMLError:
-            fileinfo["data"] = {}
-
-        fileinfo["content"] = mdit.render("".join(content_lines))
         return fileinfo
 
     @cache
@@ -162,37 +156,24 @@ class FileManager:
         # 1. Handle name changes/conflicts first
         actual_name = self.rename_file(file.stem, doc["title"])
 
-        # --- NEW: Reconstruct Frontmatter and fix empty tags ---
-        data = doc.get("data", {})
-
-        if "tags" not in data:
-            data["tags"] = []
-
-        # Dump to YAML (if data is empty, fm_text is just an empty string)
-        fm_text = yaml.safe_dump(data, default_flow_style=False, sort_keys=False) if data else ""
-        # -------------------------------------------------------
-
         # 2. Write the whole structure
         split_doc = doc["content"].split("<br>")
         split_length = len(split_doc)
-
-        with self.get_file(actual_name).open("w", encoding='utf-8') as f:
-            # --- NEW: Write the frontmatter to the file ---
-            if fm_text:
-                f.write(f"---\n{fm_text}---\n")
-            else:
-                f.write("---\n---\n")  # Keep standard empty frontmatter blocks
-            # ----------------------------------------------
-
+        with self.get_file(actual_name).open("w") as f:
+            if doc["data"]:
+                f.write("---\n")
+                yaml.dump(doc["data"], f)
+                f.write("---\n")
+            line: str
             for index, line in enumerate(split_doc):
-                if line == "</div><div>":
+                if line in ("</div><div>", "</p><p>"):
                     f.write("\n")
-                elif line:
-                    if index:
-                        f.write("\n")
+                else:
                     f.write("\n".join(filter(None, md(line).split("\n"))))
-                    if (index + 1) == split_length:
+                    if (index + 1) < split_length:
                         f.write("\n")
+                        if line:
+                            f.write("\n")
 
         return actual_name
 
@@ -205,7 +186,6 @@ class FileManager:
 
     def get_system_ctime(self, name):
         file = self.get_file(name)
-        return file.stat().st_ctime if file.exists() else 0
-
+        return file.stat().st_birthtime if file.exists() else 0
 
 file_manager: FileManager = FileManager()
