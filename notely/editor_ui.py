@@ -1,60 +1,255 @@
 # editor_ui.py
 
 import re
+<<<<<<< export-feature
 import base64
 
+=======
+>>>>>>> main
 from datetime import datetime
 from nicegui import ui
-
 from .file_manager import FileManager, file_manager
 
 file_manager: FileManager
 
 
-# Landing Screen
 @ui.page("/")
 def landing_page():
+    # 1. State container
+    state = {
+        "search_query": "",
+        "search_tags": [],
+        "sort_by": "Date Edited",
+        "sort_order": "Desc"
+    }
+
+    # tags
+    tag_dialog = ui.dialog()
+    with tag_dialog, ui.card().classes('w-[400px] shadow-xl rounded-lg'):
+        ui.label('Manage Tags').classes('text-xl font-bold mb-1 text-gray-800')
+        dialog_filename = ui.label('').classes('text-sm text-gray-500 mb-4 font-mono truncate')
+
+        def handle_new_tag(e):
+            new_val = e.args[0] if isinstance(e.args, (list, tuple)) else e.args
+
+            if not new_val or not str(new_val).strip():
+                return
+
+            new_val = str(new_val).strip()
+
+            if new_val not in tag_input.options:
+                tag_input.options.append(new_val)
+
+            current_tags = list(tag_input.value or [])
+            if new_val not in current_tags:
+                current_tags.append(new_val)
+                tag_input.value = current_tags
+
+            tag_input.run_method('updateInputValue', '')
+            tag_input.update()
+
+        tag_input = ui.select(
+            options=["Draft", "Work", "Personal", "Todo"],
+            multiple=True,
+            value=[],
+            with_input=True,
+            new_value_mode='add',
+            label="Select or type a new tag..."
+        ).props('use-chips').classes('w-full mb-6')
+
+        tag_input.on('new-value', handle_new_tag)
+
+        with ui.row().classes('w-full justify-end gap-2'):
+            ui.button('Cancel', on_click=tag_dialog.close).props('flat text-color=gray-500')
+
+            def on_save():
+                doc_state = file_manager.read_file(dialog_filename.text)
+                doc_state["data"]["tags"] = [str(t) for t in tag_input.value if t and str(t).strip()]
+                file_manager.save_file(file_manager.get_file(dialog_filename.text), doc_state)
+                tag_dialog.close()
+                document_grid.refresh()
+
+            ui.button('Save', on_click=on_save).props('color=green text-color=white')
+
+    def open_tag_dialog(filename, current_tags):
+        dialog_filename.text = filename
+
+        all_t = {"Draft", "Work", "Personal", "Todo"}
+        for f in get_file_previews():
+            for t in f['tags']:
+                all_t.add(t)
+
+        tag_input.options = sorted(list(all_t))
+        tag_input.set_value(list(current_tags) if current_tags else [])
+        tag_dialog.open()
+
+    # files
 
     def handle_create():
-        file_manager.create_file()
-        ui.navigate.to("/")
+        if state["search_query"] == "":
+            file_manager.create_file()
+        else:
+            file_manager.create_file(state["search_query"])
+        document_grid.refresh()
 
-    # it had a weird white border so thats why this is here
+    def handle_delete(filename):
+        file_manager.del_file(filename)
+        document_grid.refresh()
+
+    def get_file_previews():
+        previews = []
+        for filename in file_manager.files:
+            last_edited = file_manager.get_time_ago(filename)
+            mtime = file_manager.get_system_mtime(filename)
+            ctime = file_manager.get_system_ctime(filename)
+
+            ctime_display = datetime.fromtimestamp(ctime).strftime("%b %d, %Y") if ctime > 0 else "Unknown"
+
+            fileinfo = file_manager.read_file(filename)
+
+            # Extract tags safely
+            raw_tags = fileinfo.get("data", {}).get("tags", []) if fileinfo.get("data") else []
+            tags = raw_tags if isinstance(raw_tags, list) else [raw_tags]
+            tags = [str(t).strip() for t in tags if t]
+
+            # Create snippet
+            raw_html = fileinfo.get("content", "")
+            clean_text = re.sub(r'<[^>]+>', '', raw_html).strip()
+            snippet = clean_text if clean_text else "Empty document..."
+            snippet = snippet[0:65]+"..." if len(snippet) > 65 else snippet
+
+            previews.append({
+                "name": filename,
+                "time_ago": last_edited,
+                "mtime": mtime,
+                "ctime": ctime,
+                "ctime_display": ctime_display,
+                "tags": tags,
+                "snippet": snippet
+            })
+        return previews
+
+    # ui elements
+
+    @ui.refreshable
+    def document_grid():
+        available_files = get_file_previews()
+
+        # Sync the global tag filter options
+        all_tags = set()
+        for f in available_files:
+            for t in f['tags']:
+                all_tags.add(t)
+        tag_filter_dropdown.options = sorted(list(all_tags))
+        tag_filter_dropdown.update()
+
+        # Filter by Search Query
+        if state["search_query"]:
+            query = state["search_query"].lower()
+            available_files = [f for f in available_files if query in f['name'].lower()]
+
+        # Filter by Selected Tags
+        if state["search_tags"]:
+            available_files = [
+                f for f in available_files
+                if all(req_tag in f['tags'] for req_tag in state["search_tags"])
+            ]
+
+        # Sort files
+        is_descending = state["sort_order"] == "Desc"
+        if state["sort_by"] == "Name":
+            available_files.sort(key=lambda x: x['name'].lower(), reverse=is_descending)
+        elif state["sort_by"] == "Date Edited":
+            available_files.sort(key=lambda x: x['mtime'], reverse=is_descending)
+        elif state["sort_by"] == "Date Created":
+            available_files.sort(key=lambda x: x['ctime'], reverse=is_descending)
+
+        # Render Grid
+        with ui.element('div').classes(
+                "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full max-w-6xl px-4"):
+
+            # New Document Button
+            with ui.card().classes(
+                    "w-full h-48 flex flex-col items-center justify-center cursor-pointer bg-white border-2 border-dashed border-gray-300 hover:border-green-500 hover:bg-green-50 transition-all shadow-sm").on(
+                    "click", handle_create):
+                ui.icon("add_circle_outline", size="3rem").classes("text-green-600 mb-2")
+                ui.label("New Document").classes("text-lg font-bold text-gray-700")
+
+            # File Cards
+            for file_data in available_files:
+                with ui.card().classes(
+                        "w-full h-48 flex flex-col justify-between cursor-pointer bg-white hover:shadow-lg transition-shadow border border-gray-200 relative").on(
+                        "click", lambda e, f=file_data['name']: ui.navigate.to(f"/editor/{f}")):
+
+                    with ui.column().classes("w-full gap-2"):
+                        with ui.row().classes("w-full justify-between items-start flex-nowrap"):
+                            ui.label(file_data['name']).classes("text-xl font-bold text-gray-800 truncate")
+
+                            with ui.button(icon='more_vert').props('flat round dense').classes(
+                                    'text-gray-400 hover:text-gray-800 -mt-1 -mr-2').on('click.stop', lambda e: None):
+                                with ui.menu():
+                                    ui.menu_item('Manage Tags', on_click=lambda e, f=file_data['name'],
+                                                                                t=file_data['tags']: open_tag_dialog(f,
+                                                                                                                     t)).classes(
+                                        'text-blue-600 font-medium')
+                                    ui.menu_item('Delete',
+                                                 on_click=lambda e, f=file_data['name']: handle_delete(f)).classes(
+                                        'text-red-600 font-medium')
+
+                        # Tag Chips
+                        if file_data['tags']:
+                            with ui.row().classes("flex-wrap gap-1 mb-1"):
+                                for tag in file_data['tags'][:3]:
+                                    ui.label(tag).classes(
+                                        "text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider")
+                                if len(file_data['tags']) > 3:
+                                    ui.label(f"+{len(file_data['tags']) - 3}").classes(
+                                        "text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-bold")
+
+                        ui.label(file_data['snippet']).classes("text-sm text-gray-500 line-clamp-3 leading-snug")
+
+                    with ui.row().classes(
+                            "w-full items-center mt-auto border-t border-gray-100 pt-3 gap-1.5 flex-nowrap"):
+                        ui.icon("info_outline", size="1rem").classes("text-gray-400 shrink-0")
+                        ui.label(f"Created {file_data['ctime_display']} • Edited {file_data['time_ago']}").classes(
+                            "text-xs font-medium text-gray-400 truncate flex-1 min-w-0"
+                        )
+
+    # layout
     ui.query(".nicegui-content").classes("p-0")
 
-    with ui.column().classes("w-full min-h-screen items-center py-12 bg-gray-100"):
-        ui.label("Select a Document").classes("text-3xl font-bold text-gray-800 mb-6")
+    with ui.column().classes("w-full min-h-screen items-center py-12 bg-gray-50"):
+        with ui.row().classes("w-full max-w-6xl px-4 items-center justify-between mb-4"):
+            ui.label("My Documents").classes("text-4xl font-extrabold text-gray-800 tracking-tight")
 
-        available_files = file_manager.files
+        with ui.row().classes("w-full max-w-6xl px-4 mb-8 justify-between items-center gap-4 flex-wrap sm:flex-nowrap"):
+            with ui.row().classes("flex-grow flex-nowrap items-center gap-2"):
+                ui.input(placeholder="Search documents...", on_change=document_grid.refresh).bind_value(state,
+                                                                                                        "search_query").props(
+                    'outlined dense clearable').classes("flex-grow min-w-[200px] bg-white")
 
-        # Added 'px-4' here so the cards don't scrape the absolute edge of a small browser window
-        with ui.column().classes("gap-3 w-full max-w-3xl px-4"):
-            # 2. FIXED THE BUTTON
-            # Using props('outline color=green') guarantees the Quasar button formats the text correctly
-            ui.button("+ Create New Document", on_click=handle_create).props(
-                "outline color=green"
-            ).classes("w-full mb-4 bg-white text-lg font-bold shadow-sm")
+                global tag_filter_dropdown
+                tag_filter_dropdown = ui.select(
+                    options=[],
+                    multiple=True,
+                    with_input=True,
+                    label="Filter Tags",
+                    on_change=document_grid.refresh
+                ).bind_value(state, "search_tags").props('use-chips dense clearable').classes("w-56 bg-white")
 
-            if not available_files:
-                ui.label("No files found.").classes(
-                    "text-gray-500 italic text-center w-full py-8"
-                )
+            with ui.row().classes("items-center gap-2 w-full sm:w-auto flex-nowrap"):
+                ui.select(options=["Date Edited", "Date Created", "Name"], on_change=document_grid.refresh).bind_value(
+                    state, "sort_by").props('outlined dense').classes("w-40 bg-white")
 
-            for filename in available_files:
-                last_edited = file_manager.get_time_ago(filename)
+                def toggle_order(e):
+                    state["sort_order"] = "Asc" if state["sort_order"] == "Desc" else "Desc"
+                    e.sender.icon = 'arrow_upward' if state["sort_order"] == "Asc" else 'arrow_downward'
+                    document_grid.refresh()
 
-                with (
-                    ui.card()
-                    .classes(
-                        "w-full p-4 flex-row justify-between items-center cursor-pointer hover:bg-gray-200 transition-colors shadow-sm"
-                    )
-                    .on("click", lambda f=filename: ui.navigate.to(f"/editor/{f}"))
-                ):
-                    ui.label(filename).classes("text-lg font-semibold text-gray-800")
-                    ui.label(f"Last edited {last_edited}").classes(
-                        "text-sm text-gray-500 font-medium"
-                    )
+                ui.button(icon='arrow_downward', on_click=toggle_order).props(
+                    'outline color=grey-5 text-color=grey-9').classes("bg-white h-[40px] px-3 shadow-none")
 
+        document_grid()
 
 @ui.page("/editor/{filename}")
 def render_editor(filename: str):
@@ -77,7 +272,7 @@ def render_editor(filename: str):
         nonlocal last_sync_mtime
 
         # Only save if the editor content is newer than the file content
-        if last_editor_mtime > last_sync_mtime:
+        if (last_editor_mtime > last_sync_mtime) or ():
             # 1. Get raw content from the UI
             raw_content = text_editor.value
             if not raw_content:

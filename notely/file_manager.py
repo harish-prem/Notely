@@ -1,5 +1,4 @@
 import re
-import yaml
 
 from collections import namedtuple
 from datetime import datetime
@@ -7,10 +6,21 @@ from functools import cache
 from markdownify import markdownify as md
 from markdown_it import MarkdownIt
 from pathlib import Path
+<<<<<<< export-feature
 from fpdf import FPDF, HTMLMixin
 
+=======
+from ruamel.yaml import YAML
+>>>>>>> main
 
 mdit = MarkdownIt()
+yaml = YAML(typ="safe", pure=True)
+yaml.default_flow_style = False
+
+# Adapted From:
+# Answer: https://stackoverflow.com/a/63532326
+# User: https://stackoverflow.com/users/11386706/kerasbaz
+yaml.indent(sequence=4, offset=2)
 
 Defaults = namedtuple("Defaults", "directory,name")
 defaults = Defaults(Path.home() / "Documents" / "Notely", "untitled")
@@ -129,19 +139,17 @@ class FileManager:
             for index, line in enumerate(f):
                 clean_line = line.rstrip("\n")
                 if clean_line == "---":
-                    # TODO: Optimize with boolean algebra.
-                    if index:
-                        writing_data = False
-                    elif not writing_data:
-                        writing_data = True
-
+                    writing_data = not index
+                    continue
                 if writing_data:
                     data += line
+                elif clean_line:
+                    content += mdit.render(line)
                 else:
-                    content += line
+                    content += "<div><br></div>"
 
-            fileinfo["data"] = yaml.safe_load(data)
-            fileinfo["content"] = mdit.render(content)
+            fileinfo["data"] = yaml.load(data) or {}
+            fileinfo["content"] = content
 
         return fileinfo
     
@@ -172,7 +180,23 @@ class FileManager:
         actual_name = self.rename_file(file.stem, doc["title"])
 
         # 2. Write the whole structure
-        self.get_file(actual_name).write_text(md(doc["content"]))
+        split_doc = doc["content"].split("<br>")
+        split_length = len(split_doc)
+        with self.get_file(actual_name).open("w") as f:
+            if doc["data"]:
+                f.write("---\n")
+                yaml.dump(doc["data"], f)
+                f.write("---\n")
+            line: str
+            for index, line in enumerate(split_doc):
+                if line in ("</div><div>", "</p><p>"):
+                    f.write("\n")
+                else:
+                    f.write("\n".join(filter(None, md(line).split("\n"))))
+                    if (index + 1) < split_length:
+                        f.write("\n")
+                        if line:
+                            f.write("\n")
 
         return actual_name
 
@@ -183,5 +207,8 @@ class FileManager:
         file = self.get_file(name)
         return file.stat().st_mtime if file.exists() else 0
 
+    def get_system_ctime(self, name):
+        file = self.get_file(name)
+        return file.stat().st_birthtime if file.exists() else 0
 
 file_manager: FileManager = FileManager()
