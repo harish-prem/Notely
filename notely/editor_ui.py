@@ -19,6 +19,10 @@ def landing_page():
         "sort_order": "Desc"
     }
 
+    def handle_create():
+        file_manager.create_file()
+        ui.navigate.to("/")
+
     # tags
     current_edit = {"original_name": ""}
     tag_dialog = ui.dialog()
@@ -294,27 +298,25 @@ def render_editor(filename: str):
         nonlocal file
         nonlocal last_sync_mtime
 
+        # 1. Get raw content from the UI
+        raw_content = text_editor.value
+        if not raw_content:
+            raw_content = ""
+
+        # 2. Update internal state
+        doc_state["content"] = raw_content
+        actual_name = doc_state["title"] = re.sub(r'[<>:"/\\|?*]', "", doc_state["title"])
+
         # Only save if the editor content is newer than the file content
-        if (last_editor_mtime > last_sync_mtime) or ():
-            # 1. Get raw content from the UI
-            raw_content = text_editor.value
-            if not raw_content:
-                raw_content = ""
-
-            sanitized = raw_content
-
-            # 2. Update internal state
-            doc_state["content"] = sanitized
-            doc_state["title"] = re.sub(r'[<>:"/\\|?*]', "", doc_state["title"])
-
+        if (actual_name != file.stem) or (last_editor_mtime > last_sync_mtime):
             # 3. Save to disk
             actual_name = file_manager.save_file(file, doc_state)
 
             # 4. ONLY update the UI if we actually changed the string.
             # If the user just hit 'Enter', the browser's <div><br></div> is fine,
             # so we leave it alone.
-            if text_editor.value != sanitized:
-                text_editor.set_value(sanitized)
+            if text_editor.value != raw_content:
+                text_editor.set_value(raw_content)
 
             # 5. Handle renaming
             if actual_name != file.stem:
