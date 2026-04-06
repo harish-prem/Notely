@@ -111,7 +111,7 @@ def landing_page():
             raw_html = fileinfo.get("content", "")
             clean_text = re.sub(r'<[^>]+>', '', raw_html).strip()
             snippet = clean_text if clean_text else "Empty document..."
-            snippet = snippet[0:60]+"..." if len(snippet) > 60 else snippet
+            snippet = snippet[0:65]+"..." if len(snippet) > 65 else snippet
 
             previews.append({
                 "name": filename,
@@ -203,10 +203,12 @@ def landing_page():
 
                         ui.label(file_data['snippet']).classes("text-sm text-gray-500 line-clamp-3 leading-snug")
 
-                    with ui.row().classes("w-full items-center mt-auto border-t border-gray-100 pt-3 gap-1.5"):
-                        ui.icon("info_outline", size="1rem").classes("text-gray-400")
+                    with ui.row().classes(
+                            "w-full items-center mt-auto border-t border-gray-100 pt-3 gap-1.5 flex-nowrap"):
+                        ui.icon("info_outline", size="1rem").classes("text-gray-400 shrink-0")
                         ui.label(f"Created {file_data['ctime_display']} • Edited {file_data['time_ago']}").classes(
-                            "text-xs font-medium text-gray-400 truncate")
+                            "text-xs font-medium text-gray-400 truncate flex-1 min-w-0"
+                        )
 
     # layout
     ui.query(".nicegui-content").classes("p-0")
