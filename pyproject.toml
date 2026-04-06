@@ -10,11 +10,8 @@ dependencies = [
     "nicegui>=3.9.0",
     "pyyaml>=6.0.3",
     "rich-click>=1.9.7",
-<<<<<<< export-feature
     "fpdf2>=2.8.7",
-=======
     "ruamel-yaml>=0.19.1",
->>>>>>> main
 ]
 
 [dependency-groups]

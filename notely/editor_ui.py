@@ -1,11 +1,7 @@
 # editor_ui.py
 
 import re
-<<<<<<< export-feature
 import base64
-
-=======
->>>>>>> main
 from datetime import datetime
 from nicegui import ui
 from .file_manager import FileManager, file_manager
@@ -24,10 +20,14 @@ def landing_page():
     }
 
     # tags
+    current_edit = {"original_name": ""}
     tag_dialog = ui.dialog()
+
     with tag_dialog, ui.card().classes('w-[400px] shadow-xl rounded-lg'):
-        ui.label('Manage Tags').classes('text-xl font-bold mb-1 text-gray-800')
-        dialog_filename = ui.label('').classes('text-sm text-gray-500 mb-4 font-mono truncate')
+        ui.label('Manage Document').classes('text-xl font-bold mb-1 text-gray-800')
+
+
+        dialog_filename = ui.input('Filename').classes('w-full mb-4 font-mono text-gray-700')
 
         def handle_new_tag(e):
             new_val = e.args[0] if isinstance(e.args, (list, tuple)) else e.args
@@ -63,16 +63,26 @@ def landing_page():
             ui.button('Cancel', on_click=tag_dialog.close).props('flat text-color=gray-500')
 
             def on_save():
-                doc_state = file_manager.read_file(dialog_filename.text)
+                orig_name = current_edit["original_name"]
+
+                new_name = dialog_filename.value.strip() or orig_name
+
+
+                doc_state = file_manager.read_file(orig_name)
+
+                doc_state["title"] = new_name
                 doc_state["data"]["tags"] = [str(t) for t in tag_input.value if t and str(t).strip()]
-                file_manager.save_file(file_manager.get_file(dialog_filename.text), doc_state)
+
+                file_manager.save_file(file_manager.get_file(orig_name), doc_state)
+
                 tag_dialog.close()
                 document_grid.refresh()
 
             ui.button('Save', on_click=on_save).props('color=green text-color=white')
 
     def open_tag_dialog(filename, current_tags):
-        dialog_filename.text = filename
+        current_edit["original_name"] = filename
+        dialog_filename.value = filename
 
         all_t = {"Draft", "Work", "Personal", "Todo"}
         for f in get_file_previews():
@@ -84,6 +94,16 @@ def landing_page():
         tag_dialog.open()
 
     # files
+
+    def handle_export(filename):
+        pdf_bytes = file_manager.export_pdf(filename)
+        b64 = base64.b64encode(pdf_bytes).decode()
+        ui.run_javascript(f""" 
+                    const a = document.createElement("a");
+                    a.href = "data:application/pdf;base64, {b64}";
+                    a.download = "{filename}.pdf"
+                    a.click();
+                """)
 
     def handle_create():
         if state["search_query"] == "":
@@ -116,7 +136,7 @@ def landing_page():
             raw_html = fileinfo.get("content", "")
             clean_text = re.sub(r'<[^>]+>', '', raw_html).strip()
             snippet = clean_text if clean_text else "Empty document..."
-            snippet = snippet[0:65]+"..." if len(snippet) > 65 else snippet
+            snippet = snippet[0:57]+"..." if len(snippet) > 60 else snippet
 
             previews.append({
                 "name": filename,
@@ -188,10 +208,13 @@ def landing_page():
                             with ui.button(icon='more_vert').props('flat round dense').classes(
                                     'text-gray-400 hover:text-gray-800 -mt-1 -mr-2').on('click.stop', lambda e: None):
                                 with ui.menu():
-                                    ui.menu_item('Manage Tags', on_click=lambda e, f=file_data['name'],
+                                    ui.menu_item('Manage File', on_click=lambda e, f=file_data['name'],
                                                                                 t=file_data['tags']: open_tag_dialog(f,
                                                                                                                      t)).classes(
                                         'text-blue-600 font-medium')
+                                    ui.menu_item('Export PDF',
+                                                 on_click=lambda e, f=file_data['name']: handle_export(f)).classes(
+                                        'text-purple-600 font-medium')
                                     ui.menu_item('Delete',
                                                  on_click=lambda e, f=file_data['name']: handle_delete(f)).classes(
                                         'text-red-600 font-medium')
