@@ -1,6 +1,11 @@
 # editor_ui.py
 
 import re
+<<<<<<< export-feature
+import base64
+
+=======
+>>>>>>> main
 from datetime import datetime
 from nicegui import ui
 from .file_manager import FileManager, file_manager
@@ -295,6 +300,16 @@ def render_editor(filename: str):
 
             last_sync_mtime = file_manager.get_system_mtime(actual_name)
 
+    def export_pdf():
+        pdf_bytes = file_manager.export_pdf(filename)
+        b64 = base64.b64encode(pdf_bytes).decode()
+        ui.run_javascript(f""" 
+            const a = document.createElement("a");
+            a.href = "data:application/pdf;base64, {b64}";
+            a.download = "{filename}.pdf"
+            a.click();
+        """)
+
     def on_editor_change(e):
         nonlocal last_editor_mtime
         last_editor_mtime = datetime.now().timestamp()
@@ -326,6 +341,7 @@ def render_editor(filename: str):
         with ui.row().classes("gap-1"):
             ui.button("Save", on_click=save, color="blue").props("flat size=sm")
             ui.button("Delete", on_click=delete, color="red").props("flat size=sm")
+            ui.button("Export PDF", on_click=export_pdf, color="purple").props("flat size=sm")
 
         title_box.on("keydown.ctrl.s.capture.prevent.stop", save)
         title_box.on("keydown.meta.s.capture.prevent.stop", save)
