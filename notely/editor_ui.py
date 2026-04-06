@@ -111,6 +111,7 @@ def landing_page():
             raw_html = fileinfo.get("content", "")
             clean_text = re.sub(r'<[^>]+>', '', raw_html).strip()
             snippet = clean_text if clean_text else "Empty document..."
+            snippet = snippet[0:60]+"..." if len(snippet) > 60 else snippet
 
             previews.append({
                 "name": filename,
