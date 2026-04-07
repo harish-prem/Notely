@@ -58,7 +58,7 @@ cmd = "uv sync --all-groups"
 [tool.poe.tasks.build]
 help = "Build wheels and executables"
 shell = """
-    uv run nuitka --include-package-data=nicegui --mode=standalone .\notely
+    uv run nuitka --include-package-data=nicegui --mode=standalone ./notely
 """
 
 [tool.poe.tasks.clean]
