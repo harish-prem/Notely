@@ -63,7 +63,6 @@ content_strat = st.text(alphabet=st.characters(codec="utf-8").filter(
     lambda c: not json.dumps(c).startswith('"\\')
 ))
 
-
 @fixture
 def file_manager(tmp_path):
     return FileManager(tmp_path)
@@ -91,7 +90,7 @@ def test_save_file(name: int | str, content: str, file_manager: FileManager):
     file: Path = file_manager.get_file(name)
     assume(not file.exists())
     file_manager.create_file(name)
-    doc = {"title": str(name), "content": f"<p>{content}</p>"}
+    doc = {"title": str(name), "content": f"<p>{content}</p>", "data": {}}
     file_manager.save_file(file, doc)
     assert file.exists()
 
@@ -141,6 +140,15 @@ def test_files_property(file_manager: FileManager):
         file_manager.create_file(f"note_{i}")
     assert len(file_manager.files) == 5
 
+# UT-09-CB
+def test_export_pdf(file_manager: FileManager):
+    name = file_manager.create_file("untitled")
+    file = file_manager.get_file(name)
+    file.write_text("hello world")
+    result = file_manager.export_pdf(name)
+    assert isinstance(result, bytearray)
+    assert result.startswith(b"%PDF")
+
 # IT-01-TB: create_file() and FileManager
 def test_it_create_file(file_manager: FileManager):
     name = file_manager.create_file("untitled")
@@ -152,7 +160,7 @@ def test_it_create_file(file_manager: FileManager):
 def test_it_save_file(file_manager: FileManager):
     name = file_manager.create_file("untitled")
     file = file_manager.get_file(name)
-    doc = {"title": "untitled", "content": "<p>new content</p>"}
+    doc = {"title": "untitled", "content": "<p>new content</p>", "data": {}}    
     file_manager.save_file(file, doc)
     result = file_manager.read_file(name)
     assert "new content" in result["content"]
@@ -174,3 +182,12 @@ def test_it_delete_file(file_manager: FileManager):
     assert file.exists()
     file_manager.del_file(name)
     assert not file.exists()
+
+# IT-06-TB
+def test_it_export_pdf(file_manager: FileManager):
+    name = file_manager.create_file("untitled")
+    file = file_manager.get_file(name)
+    file.write_text("**bold** and *italic* content")
+    result = file_manager.export_pdf(name)
+    assert isinstance(result, bytearray)
+    assert result.startswith(b"%PDF")
