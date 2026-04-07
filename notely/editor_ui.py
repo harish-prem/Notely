@@ -136,7 +136,7 @@ async def landing_page():
         user_fm.del_file(filename)
         document_grid.refresh()
 
-    async def get_file_previews():
+    def get_file_previews():
         previews = []
         for filename in user_fm.files:
             last_edited = user_fm.get_time_ago(filename)
@@ -173,8 +173,8 @@ async def landing_page():
     # ui elements
 
     @ui.refreshable
-    async def document_grid():
-        available_files = await get_file_previews()
+    def document_grid():
+        available_files = get_file_previews()
 
         # Sync the global tag filter options
         all_tags = set()
