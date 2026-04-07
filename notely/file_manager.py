@@ -6,8 +6,10 @@ from functools import cache
 from markdownify import markdownify as md
 from markdown_it import MarkdownIt
 from pathlib import Path
+from fpdf import FPDF
+from ruamel.yaml import YAML
 
-from fpdf import FPDF, HTMLMixin
+from fpdf import FPDF
 
 from ruamel.yaml import YAML
 
@@ -158,10 +160,7 @@ class FileManager:
     def export_pdf(self, name: str) -> bytes:
         doc = self.read_file(name)
         
-        class PDF(FPDF, HTMLMixin):
-            pass
-
-        pdf = PDF()
+        pdf = FPDF()
         pdf.add_page()
 
         #pdf.set_font("Times", "B", 24)
