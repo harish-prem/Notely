@@ -28,3 +28,6 @@ wheels/
 *.cmd
 *.onefile-build
 nuitka-crash-report.xml
+
+auth.env
+notes

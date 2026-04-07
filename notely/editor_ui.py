@@ -22,7 +22,9 @@ async def landing_page():
     if not user_id:
         auth.login()
         return
-    
+
+    user_fm = file_manager.for_user(user_id)
+
     # 1. State container
     state = {
         "search_query": "",
@@ -82,12 +84,12 @@ async def landing_page():
                 new_name = dialog_filename.value.strip() or orig_name
 
 
-                doc_state = file_manager.read_file(orig_name)
+                doc_state = user_fm.read_file(orig_name)
 
                 doc_state["title"] = new_name
                 doc_state["data"]["tags"] = [str(t) for t in tag_input.value if t and str(t).strip()]
 
-                file_manager.save_file(file_manager.get_file(orig_name), doc_state)
+                user_fm.save_file(user_fm.get_file(orig_name), doc_state)
 
                 tag_dialog.close()
                 document_grid.refresh()
@@ -110,7 +112,7 @@ async def landing_page():
     # files
 
     def handle_export(filename):
-        pdf_bytes = file_manager.export_pdf(filename)
+        pdf_bytes = user_fm.export_pdf(filename)
         b64 = base64.b64encode(pdf_bytes).decode()
         ui.run_javascript(f""" 
                     const a = document.createElement("a");
@@ -120,49 +122,30 @@ async def landing_page():
                 """)
 
     async def handle_create():
-        user_id = await auth.logged_in_as()
-        if user_id == None:
-            print('handle_create: user not logged in')
-            return
-        
-        file = ''
         if state["search_query"] == "":
-            file = file_manager.create_file()
+            file = user_fm.create_file()
         else:
-            file = file_manager.create_file(state["search_query"])
+            file = user_fm.create_file(state["search_query"])
 
-        doc = file_manager.read_file(file)
-        doc['data']['owner'] = str(user_id)
-        file_manager.save_file(Path(file), doc)
         ui.navigate.to(f"/editor/{file}")
         
             
         # document_grid.refresh()
 
     def handle_delete(filename):
-        file_manager.del_file(filename)
+        user_fm.del_file(filename)
         document_grid.refresh()
 
     async def get_file_previews():
-        user_id = await auth.logged_in_as()
-        if user_id == None:
-            print('handle_create: user not logged in')
-            return
-        
-
         previews = []
-        for filename in file_manager.files:
-            last_edited = file_manager.get_time_ago(filename)
-            mtime = file_manager.get_system_mtime(filename)
-            ctime = file_manager.get_system_ctime(filename)
+        for filename in user_fm.files:
+            last_edited = user_fm.get_time_ago(filename)
+            mtime = user_fm.get_system_mtime(filename)
+            ctime = user_fm.get_system_ctime(filename)
 
             ctime_display = datetime.fromtimestamp(ctime).strftime("%b %d, %Y") if ctime > 0 else "Unknown"
 
-            fileinfo = file_manager.read_file(filename)
-            
-            file_info_data = fileinfo.get('data', {})
-            if ('owner' not in file_info_data or file_info_data['owner'] != user_id):
-                continue
+            fileinfo = user_fm.read_file(filename)
                 
 
             # Extract tags safely
@@ -315,28 +298,29 @@ async def landing_page():
 
 @ui.page("/editor/{filename}")
 async def render_editor(filename: str):
-    file = file_manager.get_file(filename)
-
     user_id = await auth.logged_in_as()
     if not user_id:
         ui.notify("You do not have access to this note.", color="negative")
         return
-    
-    # 1. STATE
-    doc_state = file_manager.read_file(filename)
-            
-    file_info_data = doc_state.get('data', {})
-    if ('owner' not in file_info_data or file_info_data['owner'] != user_id):
+
+    user_fm = file_manager.for_user(user_id)
+    file = user_fm.get_file(filename)
+
+    if not user_fm.file_exists(filename):
         ui.navigate.to('/')
-        
-    last_sync_mtime = file_manager.get_system_mtime(filename)
+        return
+
+    # 1. STATE
+    doc_state = user_fm.read_file(filename)
+
+    last_sync_mtime = user_fm.get_system_mtime(filename)
     last_editor_mtime = datetime.now().timestamp()
 
     # 2. LOGIC
 
     def delete():
         try:
-            file_manager.del_file(doc_state["title"])
+            user_fm.del_file(doc_state["title"])
         except PermissionError:
             ui.notify("You do not have access to delete this note.", color="negative")
             return
@@ -351,9 +335,6 @@ async def render_editor(filename: str):
         raw_content = text_editor.value
         if not raw_content:
             raw_content = ""
-            
-        if ('owner' not in file_info_data or file_info_data['owner'] != user_id):
-            ui.notify('You do not own this file', type='negative')
 
         # 2. Update internal state
         doc_state["content"] = raw_content
@@ -362,7 +343,7 @@ async def render_editor(filename: str):
         # Only save if the editor content is newer than the file content
         if (actual_name != file.stem) or (last_editor_mtime > last_sync_mtime):
             # 3. Save to disk
-            actual_name = file_manager.save_file(file, doc_state)
+            actual_name = user_fm.save_file(file, doc_state)
 
             # 4. ONLY update the UI if we actually changed the string.
             # If the user just hit 'Enter', the browser's <div><br></div> is fine,
@@ -372,7 +353,7 @@ async def render_editor(filename: str):
                 
 
     def export_pdf():
-        pdf_bytes = file_manager.export_pdf(filename)
+        pdf_bytes = user_fm.export_pdf(filename)
         b64 = base64.b64encode(pdf_bytes).decode()
         ui.run_javascript(f""" 
             const a = document.createElement("a");

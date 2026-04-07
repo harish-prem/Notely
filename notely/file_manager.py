@@ -201,6 +201,9 @@ class FileManager:
     def del_file(self, name):
         self.get_file(name).unlink(missing_ok=True)
 
+    def for_user(self, user_id: str) -> "FileManager":
+        return FileManager(directory=self.directory / user_id, default_name=self.default_name)
+
     def get_system_mtime(self, name):
         file = self.get_file(name)
         return os.path.getmtime(file) if file.exists() else 0
