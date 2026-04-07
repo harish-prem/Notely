@@ -1,6 +1,7 @@
 /bin
 /obj
 .idea
+.nicegui
 
 # Python-generated files
 __pycache__/
