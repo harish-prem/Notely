@@ -31,27 +31,9 @@ A web-based Markdown note-taking app with tagging, search, sorting, PDF export, 
 - Notes stored as plain `.md` files with YAML front-matter — no database required
 - Docker Compose support for one-command deployment
 
-## Prerequisites
-
-Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/#installation-methods) (Python ≥ 3.14 required).
-
 ## Usage
 
-### Run directly from GitHub
-
-```bash
-uvx https://github.com/harish-prem/Notely/releases/download/test/notely-0.1.0-py3-none-any.whl server start
-```
-
-Once the server is up, open http://localhost:80 in your browser.
-
-### Run after cloning
-
-```bash
-git clone https://github.com/harish-prem/Notely.git
-cd Notely
-uv run notely server start
-```
+Once the server is up, open http://localhost in your browser.
 
 ### CLI options
 
@@ -64,6 +46,17 @@ Arguments:
 Options:
   -p, --port INT     Port to listen on (default: 80)
   -d, --default-name TEXT  Default filename for new notes (default: untitled)
+```
+
+
+### Run using uv
+
+Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/#installation-methods) (Python ≥ 3.14 required).
+
+```bash
+git clone https://github.com/harish-prem/Notely.git
+cd Notely
+uv run notely server start
 ```
 
 ### Run with Docker Compose
@@ -95,7 +88,8 @@ CLIENT_SECRET=<your-app-client-secret>
 
 The redirect URI registered in your Cognito app client must be `<HOST_ENDPOINT>/oauth2/authorize_response`.
 
-> **Note:** Never commit `auth.env` to version control. Add it to `.gitignore`.
+[!IMPORTANT]
+Never commit or share your `auth.env`.
 
 ## Development
 
