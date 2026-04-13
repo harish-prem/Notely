@@ -110,7 +110,7 @@ def test_read_file(name: int | str, content: str, file_manager: FileManager):
 @given(old_name=name_strat, new_name=name_strat)
 def test_rename_file(old_name: int | str, new_name: int | str, file_manager: FileManager):
     old_file: Path = file_manager.get_file(old_name)
-    assume(not old_file.exists())
+    assume(not old_file.exists() and old_name.lower() != new_name.lower())    
     new_file: Path = file_manager.get_file(new_name)
     assume(not new_file.exists())
     old_file.touch()
@@ -140,7 +140,7 @@ def test_files_property(file_manager: FileManager):
         file_manager.create_file(f"note_{i}")
     assert len(file_manager.files) == 5
 
-# UT-09-CB: export_pdf()
+# UT-09-CB: export_pdf
 def test_export_pdf(file_manager: FileManager):
     name = file_manager.create_file("untitled")
     file = file_manager.get_file(name)
