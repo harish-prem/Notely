@@ -81,7 +81,7 @@ LOGIN_ENDPOINT=https://<your-cognito-domain>/login
 TOKEN_ENDPOINT=https://<your-cognito-domain>/oauth2/token
 REVOKE_ENDPOINT=https://<your-cognito-domain>/oauth2/revoke
 USERINFO_ENDPOINT=https://<your-cognito-domain>/oauth2/userInfo
-HOST_ENDPOINT=http://localhost
+HOST_ENDPOINT=http(s)://<notely-domain>/
 CLIENT_ID=<your-app-client-id>
 CLIENT_SECRET=<your-app-client-secret>
 ```

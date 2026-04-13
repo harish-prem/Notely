@@ -99,7 +99,7 @@ async def logged_in_as() -> str|None:
         if "refresh_token" in app.storage.browser:
             #TODO: get new tokens via TOKEN_ENDPOINT
             try:
-                trade_for_token(app.storage.browser["refresh_token"], "refresh_token")
+                await trade_for_token(app.storage.browser["refresh_token"], "refresh_token")
             except:
                 return None
         else:
