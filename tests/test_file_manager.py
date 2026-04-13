@@ -140,7 +140,7 @@ def test_files_property(file_manager: FileManager):
         file_manager.create_file(f"note_{i}")
     assert len(file_manager.files) == 5
 
-# UT-09-CB
+# UT-09-CB: export_pdf()
 def test_export_pdf(file_manager: FileManager):
     name = file_manager.create_file("untitled")
     file = file_manager.get_file(name)
@@ -183,7 +183,7 @@ def test_it_delete_file(file_manager: FileManager):
     file_manager.del_file(name)
     assert not file.exists()
 
-# IT-06-TB
+# IT-05-TB: export_pdf() and FileManager
 def test_it_export_pdf(file_manager: FileManager):
     name = file_manager.create_file("untitled")
     file = file_manager.get_file(name)

@@ -163,11 +163,7 @@ class FileManager:
         pdf = FPDF()
         pdf.add_page()
 
-        #pdf.set_font("Times", "B", 24)
-        #pdf.cell(0, 12, doc["title"], ln=True)
-        #pdf.ln(6)
-
-        pdf.set_font("Times", size=12)
+        pdf.set_font("Helvetica", size=12)
         pdf.write_html(doc["content"])
 
         return pdf.output()
