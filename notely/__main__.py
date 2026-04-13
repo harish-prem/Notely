@@ -30,11 +30,5 @@ def start(directory, port, default_name):
         title="Notely", port=port, show=False, storage_secret=str(uuid4()), reload=False
     )
 
-
-@server.command()
-def stop():
-    app.shutdown()
-
-
 if __name__ in ("__main__", "__mp_main__"):
     main()

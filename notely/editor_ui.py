@@ -265,7 +265,8 @@ async def landing_page():
     with ui.column().classes("w-full min-h-screen items-center py-12 bg-gray-50"):
         with ui.row().classes("w-full max-w-6xl px-4 items-center justify-between mb-4"):
             ui.label("My Documents").classes("text-4xl font-extrabold text-gray-800 tracking-tight")
-            ui.button("Logout", icon="logout", on_click=auth.logout).props('outline color=red')
+            if not auth.NO_AUTH:
+                ui.button("Logout", icon="logout", on_click=auth.logout).props('outline color=red')
 
         with ui.row().classes("w-full max-w-6xl px-4 mb-8 justify-between items-center gap-4 flex-wrap sm:flex-nowrap"):
             with ui.row().classes("flex-grow flex-nowrap items-center gap-2"):
