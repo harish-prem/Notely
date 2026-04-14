@@ -4,6 +4,8 @@
 
 A web-based Markdown note-taking app with tagging, search, sorting, PDF export, and OAuth 2.0 authentication via AWS Cognito. Built with [NiceGUI](https://nicegui.io) and served as a self-hosted web server.
 
+*Website*: https://notely.afkpals.net
+
 ## Table of Contents
 
 - [Features](#features)
