@@ -4,6 +4,23 @@
 
 A web-based Markdown note-taking app with tagging, search, sorting, PDF export, and OAuth 2.0 authentication via AWS Cognito. Built with [NiceGUI](https://nicegui.io) and served as a self-hosted web server.
 
+## Table of Contents
+
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Usage](#usage)
+  - [Run after cloning](#run-after-cloning)
+  - [Run using authentication](#run-using-authentication)
+  - [CLI options](#cli-options)
+  - [Run with Docker Compose](#run-with-docker-compose)
+  - [Authentication](#authentication)
+- [Development](#development)
+  - [Setup](#setup)
+  - [Building](#building)
+  - [Testing](#testing)
+  - [Formatting](#formatting)
+  - [Clean](#clean)
+
 ## Features
 
 - Create, edit, and delete Markdown notes in a browser UI
@@ -14,18 +31,19 @@ A web-based Markdown note-taking app with tagging, search, sorting, PDF export, 
 - Notes stored as plain `.md` files with YAML front-matter — no database required
 - Docker Compose support for one-command deployment
 
-## Usage
-
-### Run using uv
+## Prerequisites
 
 Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/#installation-methods) (Python ≥ 3.14 required).
+
+## Usage
+
+### Run after cloning
 
 ```bash
 git clone https://github.com/harish-prem/Notely.git
 cd Notely
 uv run notely server start
 ```
-
 Once the server is up, open http://localhost in your browser.
 
 ### Run using authentication
@@ -34,6 +52,52 @@ Open the following link in your broswer
 ```
 https://notely.afkpals.net
 ```
+
+### CLI options
+
+```
+notely server start [DIRECTORY] [OPTIONS]
+
+Arguments:
+ DIRECTORY          Path to the notes folder (default: ~/Documents/Notely)
+
+Options:
+ -p, --port INT     Port to listen on (default: 80)
+ -d, --default-name TEXT  Default filename for new notes (default: untitled)
+```
+
+### Run with Docker Compose
+
+Notely ships with a `compose.yaml` for containerised deployment. Notes are persisted in a local `./notes` volume.
+
+1. Copy `auth.env` and fill in your OAuth credentials (see [Authentication](#authentication)).
+2. Start the service:
+
+```bash
+docker compose up
+```
+
+The app will be available at http://localhost:80.
+
+## Authentication
+
+Notely uses OAuth 2.0 (Authorization Code flow) with AWS Cognito. Create an `auth.env` file in the project root with the following variables:
+
+```env
+LOGIN_ENDPOINT=https://<your-cognito-domain>/login
+TOKEN_ENDPOINT=https://<your-cognito-domain>/oauth2/token
+REVOKE_ENDPOINT=https://<your-cognito-domain>/oauth2/revoke
+USERINFO_ENDPOINT=https://<your-cognito-domain>/oauth2/userInfo
+HOST_ENDPOINT=http://localhost
+CLIENT_ID=<your-app-client-id>
+CLIENT_SECRET=<your-app-client-secret>
+```
+
+The redirect URI registered in your Cognito app client must be `<HOST_ENDPOINT>/oauth2/authorize_response`.
+
+> **Note:** Never commit `auth.env` to version control. Add it to `.gitignore`.
+[!IMPORTANT]
+Never commit or share your `auth.env`.
 
 ## Development
 
