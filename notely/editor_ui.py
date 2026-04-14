@@ -1,16 +1,30 @@
 # editor_ui.py
 
 import re
-import base64
+import inspect
+
+from nicegui import app, ui
+
+import auth
+from file_manager import FileManager, file_manager
+import asyncio
 from datetime import datetime
-from nicegui import ui
-from .file_manager import FileManager, file_manager
+import base64
+from pathlib import Path
 
 file_manager: FileManager
 
 
 @ui.page("/")
-def landing_page():
+async def landing_page():
+    
+    user_id = await auth.logged_in_as()
+    if not user_id:
+        auth.login()
+        return
+
+    user_fm = file_manager.for_user(user_id)
+
     # 1. State container
     state = {
         "search_query": "",
@@ -18,10 +32,8 @@ def landing_page():
         "sort_by": "Date Edited",
         "sort_order": "Desc"
     }
+    
 
-    def handle_create():
-        file_manager.create_file()
-        ui.navigate.to("/")
 
     # tags
     current_edit = {"original_name": ""}
@@ -72,12 +84,12 @@ def landing_page():
                 new_name = dialog_filename.value.strip() or orig_name
 
 
-                doc_state = file_manager.read_file(orig_name)
+                doc_state = user_fm.read_file(orig_name)
 
                 doc_state["title"] = new_name
                 doc_state["data"]["tags"] = [str(t) for t in tag_input.value if t and str(t).strip()]
 
-                file_manager.save_file(file_manager.get_file(orig_name), doc_state)
+                user_fm.save_file(user_fm.get_file(orig_name), doc_state)
 
                 tag_dialog.close()
                 document_grid.refresh()
@@ -100,7 +112,7 @@ def landing_page():
     # files
 
     def handle_export(filename):
-        pdf_bytes = file_manager.export_pdf(filename)
+        pdf_bytes = user_fm.export_pdf(filename)
         b64 = base64.b64encode(pdf_bytes).decode()
         ui.run_javascript(f""" 
                     const a = document.createElement("a");
@@ -109,27 +121,32 @@ def landing_page():
                     a.click();
                 """)
 
-    def handle_create():
+    async def handle_create():
         if state["search_query"] == "":
-            file_manager.create_file()
+            file = user_fm.create_file()
         else:
-            file_manager.create_file(state["search_query"])
-        document_grid.refresh()
+            file = user_fm.create_file(state["search_query"])
+
+        ui.navigate.to(f"/editor/{file}")
+        
+            
+        # document_grid.refresh()
 
     def handle_delete(filename):
-        file_manager.del_file(filename)
+        user_fm.del_file(filename)
         document_grid.refresh()
 
     def get_file_previews():
         previews = []
-        for filename in file_manager.files:
-            last_edited = file_manager.get_time_ago(filename)
-            mtime = file_manager.get_system_mtime(filename)
-            ctime = file_manager.get_system_ctime(filename)
+        for filename in user_fm.files:
+            last_edited = user_fm.get_time_ago(filename)
+            mtime = user_fm.get_system_mtime(filename)
+            ctime = user_fm.get_system_ctime(filename)
 
             ctime_display = datetime.fromtimestamp(ctime).strftime("%b %d, %Y") if ctime > 0 else "Unknown"
 
-            fileinfo = file_manager.read_file(filename)
+            fileinfo = user_fm.read_file(filename)
+                
 
             # Extract tags safely
             raw_tags = fileinfo.get("data", {}).get("tags", []) if fileinfo.get("data") else []
@@ -248,6 +265,8 @@ def landing_page():
     with ui.column().classes("w-full min-h-screen items-center py-12 bg-gray-50"):
         with ui.row().classes("w-full max-w-6xl px-4 items-center justify-between mb-4"):
             ui.label("My Documents").classes("text-4xl font-extrabold text-gray-800 tracking-tight")
+            if not auth.NO_AUTH:
+                ui.button("Logout", icon="logout", on_click=auth.logout).props('outline color=red')
 
         with ui.row().classes("w-full max-w-6xl px-4 mb-8 justify-between items-center gap-4 flex-wrap sm:flex-nowrap"):
             with ui.row().classes("flex-grow flex-nowrap items-center gap-2"):
@@ -279,18 +298,33 @@ def landing_page():
         document_grid()
 
 @ui.page("/editor/{filename}")
-def render_editor(filename: str):
-    file = file_manager.get_file(filename)
+async def render_editor(filename: str):
+    user_id = await auth.logged_in_as()
+    if not user_id:
+        ui.notify("You do not have access to this note.", color="negative")
+        return
+
+    user_fm = file_manager.for_user(user_id)
+    file = user_fm.get_file(filename)
+
+    if not user_fm.file_exists(filename):
+        ui.navigate.to('/')
+        return
 
     # 1. STATE
-    doc_state = file_manager.read_file(filename)
-    last_sync_mtime = file_manager.get_system_mtime(filename)
+    doc_state = user_fm.read_file(filename)
+
+    last_sync_mtime = user_fm.get_system_mtime(filename)
     last_editor_mtime = datetime.now().timestamp()
 
     # 2. LOGIC
 
     def delete():
-        file_manager.del_file(doc_state["title"])
+        try:
+            user_fm.del_file(doc_state["title"])
+        except PermissionError:
+            ui.notify("You do not have access to delete this note.", color="negative")
+            return
         ui.navigate.history.replace(f"/")
         ui.navigate.to("/")
 
@@ -310,23 +344,17 @@ def render_editor(filename: str):
         # Only save if the editor content is newer than the file content
         if (actual_name != file.stem) or (last_editor_mtime > last_sync_mtime):
             # 3. Save to disk
-            actual_name = file_manager.save_file(file, doc_state)
+            actual_name = user_fm.save_file(file, doc_state)
 
             # 4. ONLY update the UI if we actually changed the string.
             # If the user just hit 'Enter', the browser's <div><br></div> is fine,
             # so we leave it alone.
             if text_editor.value != raw_content:
                 text_editor.set_value(raw_content)
-
-            # 5. Handle renaming
-            if actual_name != file.stem:
-                file = file_manager.get_file(actual_name)
-                ui.navigate.history.replace(f"/editor/{actual_name}")
-
-            last_sync_mtime = file_manager.get_system_mtime(actual_name)
+                
 
     def export_pdf():
-        pdf_bytes = file_manager.export_pdf(filename)
+        pdf_bytes = user_fm.export_pdf(filename)
         b64 = base64.b64encode(pdf_bytes).decode()
         ui.run_javascript(f""" 
             const a = document.createElement("a");

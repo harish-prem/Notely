@@ -1,6 +1,7 @@
 /bin
 /obj
 .idea
+.nicegui
 
 # Python-generated files
 __pycache__/
@@ -27,3 +28,6 @@ wheels/
 *.cmd
 *.onefile-build
 nuitka-crash-report.xml
+
+auth.env
+notes
