@@ -27,7 +27,7 @@ def start(directory, port, default_name):
 
     print("Server is starting up! Backend logic initialized.")
     ui.run(
-        title="Notely", port=port, show=False, storage_secret=str(uuid4()), reload=False
+        title="Notely", port=port, show=False, reload=False
     )
 
 if __name__ in ("__main__", "__mp_main__"):

@@ -351,7 +351,13 @@ async def render_editor(filename: str):
             # so we leave it alone.
             if text_editor.value != raw_content:
                 text_editor.set_value(raw_content)
-                
+
+            # 5. Handle renaming
+            if actual_name != file.stem:
+                file = file_manager.get_file(actual_name)
+                ui.navigate.history.replace(f"/editor/{actual_name}")
+
+            last_sync_mtime = file_manager.get_system_mtime(actual_name)
 
     def export_pdf():
         pdf_bytes = user_fm.export_pdf(filename)

@@ -27,10 +27,6 @@ yaml.indent(sequence=4, offset=2)
 Defaults = namedtuple("Defaults", "directory,name")
 defaults = Defaults(Path.home() / "Documents" / "Notely", "untitled")
 
-Defaults = namedtuple("Defaults", "directory,name")
-defaults = Defaults(Path.home() / "Documents" / "Notely", "untitled")
-
-
 class FileManager:
     @property
     def directory(self) -> Path:
